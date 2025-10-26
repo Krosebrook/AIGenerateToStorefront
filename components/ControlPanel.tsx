@@ -15,7 +15,7 @@ interface ControlPanelProps {
   prompt: string;
   setPrompt: (prompt: string) => void;
   onGenerateEdit: () => void;
-  onGenerateNew: (prompt: string) => void;
+  onGenerateNew: () => void;
   onReset: () => void;
   isLoading: boolean;
   isImageUploaded: boolean;
@@ -24,6 +24,12 @@ interface ControlPanelProps {
   suggestions: string[];
   selectedPresets: MerchPreset[];
   onSelectedPresetsChange: (presets: MerchPreset[]) => void;
+  negativePrompt: string;
+  setNegativePrompt: (p: string) => void;
+  variations: number;
+  setVariations: (v: number) => void;
+  aspectRatio: string;
+  setAspectRatio: (ar: string) => void;
 }
 
 const MERCH_PRESETS: MerchPreset[] = [
@@ -33,9 +39,14 @@ const MERCH_PRESETS: MerchPreset[] = [
     { id: 'hoodie', name: 'Hoodie', template: 'Display this design on the front of a comfortable, slightly wrinkled black pullover hoodie. The mockup should show realistic fabric texture and be laid flat on a neutral, concrete-textured background.'},
     { id: 'stickers', name: 'Stickers', template: 'Create a mockup of multiple die-cut vinyl stickers of this design. The stickers should have a clean white border and a glossy finish, scattered realistically on a simple, pastel-colored background.'},
     { id: 'phone-case', name: 'Phone Case', template: 'Generate a mockup of this design on a sleek, matte black smartphone case (similar to an iPhone). The phone should be resting at a slight angle on a clean, minimalist desk surface next to a pair of wireless earbuds.'},
-    { id: 'tote-bag', name: 'Tote Bag', template: 'Create a photorealistic mockup of this design on a natural-colored canvas tote bag. The bag should show realistic fabric texture and creases, hanging from a hook on a sunlit, rustic brick wall.' },
+    { id: 'hat', name: 'Hat', template: 'Create a photorealistic mockup of this design embroidered on the front of a classic black baseball cap. The cap should be shown from a slight front-angle view on a clean, neutral background to emphasize the design.' },
+    { id: 'notebook', name: 'Notebook', template: 'Generate a mockup of this design on the cover of a spiral-bound notebook. The notebook should be lying on a wooden desk next to a pen, with soft, natural lighting.' },
+    { id: 'tote-bag', name: 'Tote Bag', template: 'Create a photorealistic mockup of this design on a simple, minimalist canvas tote bag. The bag should be held by a person against a clean, light-colored wall, showcasing the design in a natural, lifestyle context.' },
     { id: 'coloring-book', name: 'Adult Coloring Book', template: 'Convert this image into a detailed, black-and-white line art page for an adult coloring book. The final image should be presented as a crisp page in an open coloring book, with colored pencils resting nearby.' }
 ];
+
+const VARIATIONS_OPTIONS = [1, 2, 3, 4];
+const ASPECT_RATIO_OPTIONS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   mode,
@@ -51,6 +62,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   suggestions,
   selectedPresets,
   onSelectedPresetsChange,
+  negativePrompt,
+  setNegativePrompt,
+  variations,
+  setVariations,
+  aspectRatio,
+  setAspectRatio,
 }) => {
   const canSubmit = mode === 'edit' 
     ? isImageUploaded && (selectedPresets.length > 0 || prompt.trim() !== '') && !isLoading
@@ -68,10 +85,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   };
   
   const handleSubmit = () => {
+    if (isLoading) return;
     if (mode === 'edit') {
       onGenerateEdit();
     } else {
-      onGenerateNew(prompt);
+      onGenerateNew();
     }
   }
   
@@ -86,7 +104,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   }, [selectedPresets, mode, setPrompt]);
 
   const getGenerateButtonText = () => {
-    if (mode === 'generate') return 'Generate Image';
+    if (mode === 'generate') {
+      return variations > 1 ? `Generate ${variations} Variations` : 'Generate Image';
+    }
     if (selectedPresets.length > 1) return `Generate ${selectedPresets.length} Mockups`;
     return 'Generate';
   };
@@ -102,7 +122,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <>
           <div className="flex flex-col gap-3">
             <label className="block text-sm font-medium text-gray-300">
-              Start with a Printify product (select one or more)
+              Start with a product (select one or more)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {MERCH_PRESETS.map((preset) => {
@@ -150,14 +170,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </>
       )}
 
-      <div className="relative flex-grow flex flex-col">
+      <div className="flex-grow flex flex-col">
         <label htmlFor="prompt" className="block mb-2 text-sm font-medium text-gray-300">
           {mode === 'edit' ? 'Enter a custom prompt' : 'Prompt'}
         </label>
         <textarea
           id="prompt"
           rows={mode === 'edit' ? 3 : 5}
-          className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition flex-grow disabled:bg-gray-700/50"
+          className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition disabled:bg-gray-700/50"
           placeholder={
             mode === 'edit' 
               ? selectedPresets.length > 1
@@ -170,7 +190,65 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           disabled={(mode === 'edit' && (!isImageUploaded || selectedPresets.length > 1)) || isLoading}
         />
       </div>
-      <div className="flex flex-col sm:flex-row gap-4 mt-2">
+
+      <div className="border-t border-gray-700 pt-4 flex flex-col gap-4">
+          <div className="relative">
+            <label htmlFor="negative-prompt" className="block mb-2 text-sm font-medium text-gray-300">
+              Negative Prompt (what to avoid)
+            </label>
+            <textarea
+              id="negative-prompt"
+              rows={2}
+              className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition disabled:bg-gray-700/50"
+              placeholder="e.g., text, logos, blurry, poorly lit, extra limbs"
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+
+          {mode === 'generate' && (
+            <>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-300">Variations</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {VARIATIONS_OPTIONS.map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setVariations(v)}
+                      disabled={isLoading}
+                      className={`p-2 text-sm font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed
+                        ${variations === v ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500'}
+                      `}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block mb-2 text-sm font-medium text-gray-300">Aspect Ratio</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {ASPECT_RATIO_OPTIONS.map(ar => (
+                    <button
+                      key={ar}
+                      onClick={() => setAspectRatio(ar)}
+                      disabled={isLoading}
+                      className={`py-2 px-1 text-sm font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed
+                        ${aspectRatio === ar ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500'}
+                      `}
+                    >
+                      {ar}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 mt-auto pt-4">
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}

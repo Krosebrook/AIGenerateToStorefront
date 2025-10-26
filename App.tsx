@@ -23,6 +23,9 @@ export default function App(): React.ReactElement {
   const [sourceImage, setSourceImage] = useState<File | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string>('');
+  const [negativePrompt, setNegativePrompt] = useState<string>('');
+  const [variations, setVariations] = useState<number>(1);
+  const [aspectRatio, setAspectRatio] = useState<string>('1:1');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,16 +80,15 @@ export default function App(): React.ReactElement {
           const preset = presetsToRun[i];
           setLoadingProgress({ current: i + 1, total: presetsToRun.length });
           try {
-            const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, preset.template);
+            const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, preset.template, negativePrompt);
             setGeneratedImages(prev => [...prev, { name: preset.name, url: newImageUrl }]);
           } catch (err) {
             console.error(`Failed to generate image for ${preset.name}:`, err);
-            // Optionally, add a placeholder or error image to the results
           }
         }
       } else { // Custom prompt mode
         setLoadingProgress({ current: 1, total: 1 });
-        const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, customPrompt);
+        const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, customPrompt, negativePrompt);
         setGeneratedImages([{ name: 'Custom Edit', url: newImageUrl }]);
       }
     } catch (err) {
@@ -96,10 +98,10 @@ export default function App(): React.ReactElement {
       setIsLoading(false);
       setLoadingProgress(null);
     }
-  }, [sourceImage, sourceImageUrl, prompt, selectedPresets]);
+  }, [sourceImage, sourceImageUrl, prompt, negativePrompt, selectedPresets]);
 
-  const handleGenerateFromPrompt = useCallback(async (newPrompt: string) => {
-    if (!newPrompt.trim()) {
+  const handleGenerateFromPrompt = useCallback(async () => {
+    if (!prompt.trim()) {
       setError('Please enter a prompt to generate an image.');
       return;
     }
@@ -109,17 +111,27 @@ export default function App(): React.ReactElement {
     setGeneratedImages([]);
     setSourceImage(null);
     setSourceImageUrl(null);
-    setLoadingProgress({ current: 1, total: 1 });
+    setLoadingProgress({ current: 1, total: variations });
 
     try {
-      const newImageUrl = await generateImageFromPrompt(newPrompt);
+      const newImageUrls = await generateImageFromPrompt(prompt, negativePrompt, variations, aspectRatio);
       
-      const newImageFile = await dataURLtoFile(newImageUrl, 'generated-image.png');
+      if (!newImageUrls || newImageUrls.length === 0) {
+        throw new Error('API did not return any images.');
+      }
+
+      const generatedResultImages = newImageUrls.map((url, index) => ({
+        name: `Variation ${index + 1}`,
+        url: url,
+      }));
+      setGeneratedImages(generatedResultImages);
+      
+      // Set the first image as the source for editing
+      const firstImageUrl = generatedResultImages[0].url;
+      const newImageFile = await dataURLtoFile(firstImageUrl, `generated-image-1.png`);
       setSourceImage(newImageFile);
-      setSourceImageUrl(newImageUrl);
+      setSourceImageUrl(firstImageUrl);
       setMode('edit');
-      // Set the generated image as a result in the edit tab
-      setGeneratedImages([{ name: 'Generated Image', url: newImageUrl }]);
 
     } catch (err) {
       console.error(err);
@@ -128,12 +140,15 @@ export default function App(): React.ReactElement {
       setIsLoading(false);
       setLoadingProgress(null);
     }
-  }, []);
+  }, [prompt, negativePrompt, variations, aspectRatio]);
 
   const handleReset = useCallback(() => {
     setSourceImage(null);
     setSourceImageUrl(null);
     setPrompt('');
+    setNegativePrompt('');
+    setVariations(1);
+    setAspectRatio('1:1');
     setGeneratedImages([]);
     setError(null);
     setIsLoading(false);
@@ -208,6 +223,12 @@ export default function App(): React.ReactElement {
                   suggestions={productSuggestions}
                   selectedPresets={selectedPresets}
                   onSelectedPresetsChange={setSelectedPresets}
+                  negativePrompt={negativePrompt}
+                  setNegativePrompt={setNegativePrompt}
+                  variations={variations}
+                  setVariations={setVariations}
+                  aspectRatio={aspectRatio}
+                  setAspectRatio={setAspectRatio}
                 />
               </div>
               <div className="flex flex-col">

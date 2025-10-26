@@ -9,23 +9,26 @@ if (!API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
-const PRODUCT_LIST = ['T-Shirt', 'Mug', 'Poster', 'Hoodie', 'Stickers', 'Phone Case'].join(', ');
+const PRODUCT_LIST = ['T-Shirt', 'Mug', 'Poster', 'Hoodie', 'Stickers', 'Phone Case', 'Hat', 'Notebook', 'Tote Bag'].join(', ');
 
-export async function generateImageFromPrompt(prompt: string): Promise<string> {
+export async function generateImageFromPrompt(prompt: string, negativePrompt: string, numberOfImages: number, aspectRatio: string): Promise<string[]> {
   try {
+    const finalPrompt = negativePrompt 
+      ? `${prompt}\n\nNegative prompt: please avoid ${negativePrompt}` 
+      : prompt;
+
     const response = await ai.models.generateImages({
         model: 'imagen-4.0-generate-001',
-        prompt: prompt,
+        prompt: finalPrompt,
         config: {
-          numberOfImages: 1,
+          numberOfImages,
           outputMimeType: 'image/png',
-          aspectRatio: '1:1',
+          aspectRatio,
         },
     });
 
     if (response.generatedImages && response.generatedImages.length > 0) {
-      const base64ImageBytes = response.generatedImages[0].image.imageBytes;
-      return `data:image/png;base64,${base64ImageBytes}`;
+      return response.generatedImages.map(img => `data:image/png;base64,${img.image.imageBytes}`);
     } else {
       throw new Error("No image data returned from API.");
     }
@@ -36,8 +39,12 @@ export async function generateImageFromPrompt(prompt: string): Promise<string> {
   }
 }
 
-export async function editImageWithPrompt(base64ImageData: string, mimeType: string, prompt: string): Promise<string> {
+export async function editImageWithPrompt(base64ImageData: string, mimeType: string, prompt: string, negativePrompt: string): Promise<string> {
   try {
+    const finalPrompt = negativePrompt
+      ? `${prompt}\n\nNegative prompt: please avoid ${negativePrompt}`
+      : prompt;
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
@@ -49,7 +56,7 @@ export async function editImageWithPrompt(base64ImageData: string, mimeType: str
             },
           },
           {
-            text: prompt,
+            text: finalPrompt,
           },
         ],
       },
