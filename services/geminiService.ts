@@ -15,7 +15,7 @@ const PRODUCT_LIST = ['T-Shirt', 'Mug', 'Poster', 'Hoodie', 'Stickers', 'Phone C
 export async function generateImageFromPrompt(prompt: string, negativePrompt: string, numberOfImages: number, aspectRatio: string): Promise<string[]> {
   try {
     const finalPrompt = negativePrompt 
-      ? `${prompt}\n\nNegative prompt: please avoid ${negativePrompt}` 
+      ? `${prompt}\n\n**Negative Prompt:** Do not include any of the following elements: ${negativePrompt}` 
       : prompt;
 
     const response = await ai.models.generateImages({
@@ -65,7 +65,7 @@ export async function editImageWithPrompt(
     }
 
     if (negativePrompt) {
-        finalPrompt += `\n\n**Negative Prompt:** Please avoid ${negativePrompt}`;
+        finalPrompt += `\n\n**Negative Prompt:** Do not include any of the following elements: ${negativePrompt}`;
     }
 
     const parts: Part[] = [
