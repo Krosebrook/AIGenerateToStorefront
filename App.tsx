@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ImageUploader } from './components/ImageUploader';
 import { ControlPanel, MerchPreset } from './components/ControlPanel';
@@ -7,16 +7,25 @@ import { ShopifyModal } from './components/ShopifyModal';
 import { ModeSelector, AppMode } from './components/ModeSelector';
 import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, generateImageFromPrompt } from './services/geminiService';
 import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
+import { BrandKit } from './components/BrandKitPanel';
 
 export interface ShopifyProductDetails {
   title: string;
   description: string;
+  socialMediaCaption: string;
+  adCopy: string[];
+  hashtags: string[];
 }
 
 export interface GeneratedImage {
   name: string;
   url: string;
 }
+
+const initialBrandKit: BrandKit = {
+  logo: null,
+  colors: [],
+};
 
 export default function App(): React.ReactElement {
   const [mode, setMode] = useState<AppMode>('edit');
@@ -37,6 +46,25 @@ export default function App(): React.ReactElement {
   const [selectedPresets, setSelectedPresets] = useState<MerchPreset[]>([]);
   const [loadingProgress, setLoadingProgress] = useState<{ current: number, total: number } | null>(null);
 
+  const [brandKit, setBrandKit] = useState<BrandKit>(initialBrandKit);
+  const [useBrandKit, setUseBrandKit] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const savedKit = localStorage.getItem('brandKit');
+      if (savedKit) {
+        setBrandKit(JSON.parse(savedKit));
+      }
+    } catch (e) {
+      console.error("Failed to parse Brand Kit from localStorage", e);
+      localStorage.removeItem('brandKit');
+    }
+  }, []);
+
+  const handleUpdateBrandKit = useCallback((newKit: BrandKit) => {
+    setBrandKit(newKit);
+    localStorage.setItem('brandKit', JSON.stringify(newKit));
+  }, []);
 
   const handleImageUpload = useCallback(async (file: File) => {
     setSourceImage(file);
@@ -51,54 +79,69 @@ export default function App(): React.ReactElement {
       setSourceImageUrl(null);
     }
   }, []);
-
-  const handleGenerateEdit = useCallback(async () => {
+  
+  const handleGenerateBatch = useCallback(async (presetsToRun: MerchPreset[]) => {
     if (!sourceImage || !sourceImageUrl) {
       setError('Please upload an image first.');
       return;
     }
     
-    const presetsToRun = selectedPresets;
-    const customPrompt = prompt.trim();
-
-    if (presetsToRun.length === 0 && !customPrompt) {
-        setError('Please select a product or enter a custom prompt.');
-        return;
-    }
-
     setIsLoading(true);
     setError(null);
     setGeneratedImages([]);
     setActiveResultIndex(0);
+    setSelectedPresets(presetsToRun);
 
     const base64Data = sourceImageUrl.split(',')[1];
-
-    try {
-      if (presetsToRun.length > 0) { // Batch mode or single preset mode
-        setLoadingProgress({ current: 0, total: presetsToRun.length });
-        for (let i = 0; i < presetsToRun.length; i++) {
-          const preset = presetsToRun[i];
-          setLoadingProgress({ current: i + 1, total: presetsToRun.length });
-          try {
-            const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, preset.template, negativePrompt);
-            setGeneratedImages(prev => [...prev, { name: preset.name, url: newImageUrl }]);
-          } catch (err) {
-            console.error(`Failed to generate image for ${preset.name}:`, err);
-          }
-        }
-      } else { // Custom prompt mode
-        setLoadingProgress({ current: 1, total: 1 });
-        const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, customPrompt, negativePrompt);
-        setGeneratedImages([{ name: 'Custom Edit', url: newImageUrl }]);
+    
+    setLoadingProgress({ current: 0, total: presetsToRun.length });
+    for (let i = 0; i < presetsToRun.length; i++) {
+      const preset = presetsToRun[i];
+      setLoadingProgress({ current: i + 1, total: presetsToRun.length });
+      try {
+        const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, preset.template, negativePrompt, useBrandKit ? brandKit : undefined);
+        setGeneratedImages(prev => [...prev, { name: preset.name, url: newImageUrl }]);
+      } catch (err) {
+        console.error(`Failed to generate image for ${preset.name}:`, err);
+        // Add a placeholder or error image if one fails? For now, we just skip.
       }
-    } catch (err) {
-      console.error(err);
-      setError('An error occurred during generation. Please try again.');
-    } finally {
-      setIsLoading(false);
-      setLoadingProgress(null);
     }
-  }, [sourceImage, sourceImageUrl, prompt, negativePrompt, selectedPresets]);
+    
+    setIsLoading(false);
+    setLoadingProgress(null);
+
+  }, [sourceImage, sourceImageUrl, negativePrompt, useBrandKit, brandKit]);
+
+
+  const handleGenerateEdit = useCallback(async () => {
+    const customPrompt = prompt.trim();
+    if (selectedPresets.length > 0) {
+      handleGenerateBatch(selectedPresets);
+    } else if (customPrompt) {
+      if (!sourceImage || !sourceImageUrl) {
+        setError('Please upload an image first.');
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
+      setGeneratedImages([]);
+      setActiveResultIndex(0);
+      setLoadingProgress({ current: 1, total: 1 });
+      const base64Data = sourceImageUrl.split(',')[1];
+      try {
+        const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, customPrompt, negativePrompt, useBrandKit ? brandKit : undefined);
+        setGeneratedImages([{ name: 'Custom Edit', url: newImageUrl }]);
+      } catch(err) {
+        console.error(err);
+        setError('An error occurred during generation. Please try again.');
+      } finally {
+        setIsLoading(false);
+        setLoadingProgress(null);
+      }
+    } else {
+       setError('Please select a product or enter a custom prompt.');
+    }
+  }, [sourceImage, sourceImageUrl, prompt, negativePrompt, selectedPresets, handleGenerateBatch, useBrandKit, brandKit]);
 
   const handleGenerateFromPrompt = useCallback(async () => {
     if (!prompt.trim()) {
@@ -114,6 +157,7 @@ export default function App(): React.ReactElement {
     setLoadingProgress({ current: 1, total: variations });
 
     try {
+      // NOTE: Brand Kit is not applied to 'generate' mode, only 'edit' mode.
       const newImageUrls = await generateImageFromPrompt(prompt, negativePrompt, variations, aspectRatio);
       
       if (!newImageUrls || newImageUrls.length === 0) {
@@ -126,7 +170,6 @@ export default function App(): React.ReactElement {
       }));
       setGeneratedImages(generatedResultImages);
       
-      // Set the first image as the source for editing
       const firstImageUrl = generatedResultImages[0].url;
       const newImageFile = await dataURLtoFile(firstImageUrl, `generated-image-1.png`);
       setSourceImage(newImageFile);
@@ -155,6 +198,7 @@ export default function App(): React.ReactElement {
     setProductSuggestions([]);
     setIsShopifyModalOpen(false);
     setSelectedPresets([]);
+    setUseBrandKit(false);
     setMode('edit');
   }, []);
 
@@ -187,7 +231,13 @@ export default function App(): React.ReactElement {
       return details;
     } catch (err) {
       console.error('Failed to generate product details', err);
-      return { title: '', description: '' };
+      return { 
+        title: '', 
+        description: '',
+        socialMediaCaption: '',
+        adCopy: [],
+        hashtags: []
+      };
     }
   }, [generatedImages, activeResultIndex]);
   
@@ -229,6 +279,11 @@ export default function App(): React.ReactElement {
                   setVariations={setVariations}
                   aspectRatio={aspectRatio}
                   setAspectRatio={setAspectRatio}
+                  onGenerateBatch={handleGenerateBatch}
+                  brandKit={brandKit}
+                  onUpdateBrandKit={handleUpdateBrandKit}
+                  useBrandKit={useBrandKit}
+                  setUseBrandKit={setUseBrandKit}
                 />
               </div>
               <div className="flex flex-col">

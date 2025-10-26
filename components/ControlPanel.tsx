@@ -2,7 +2,10 @@ import React, { useEffect } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ArrowPathIcon } from './icons/ArrowPathIcon';
 import { LightbulbIcon } from './icons/LightbulbIcon';
+import { PackageIcon } from './icons/PackageIcon';
 import { AppMode } from './ModeSelector';
+import { BrandKit, BrandKitPanel } from './BrandKitPanel';
+import { PaintBrushIcon } from './icons/PaintBrushIcon';
 
 export interface MerchPreset {
     id: string;
@@ -16,6 +19,7 @@ interface ControlPanelProps {
   setPrompt: (prompt: string) => void;
   onGenerateEdit: () => void;
   onGenerateNew: () => void;
+  onGenerateBatch: (presets: MerchPreset[]) => void;
   onReset: () => void;
   isLoading: boolean;
   isImageUploaded: boolean;
@@ -30,6 +34,10 @@ interface ControlPanelProps {
   setVariations: (v: number) => void;
   aspectRatio: string;
   setAspectRatio: (ar: string) => void;
+  brandKit: BrandKit;
+  onUpdateBrandKit: (kit: BrandKit) => void;
+  useBrandKit: boolean;
+  setUseBrandKit: (use: boolean) => void;
 }
 
 const MERCH_PRESETS: MerchPreset[] = [
@@ -54,6 +62,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   setPrompt,
   onGenerateEdit,
   onGenerateNew,
+  onGenerateBatch,
   onReset,
   isLoading,
   isImageUploaded,
@@ -68,6 +77,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   setVariations,
   aspectRatio,
   setAspectRatio,
+  brandKit,
+  onUpdateBrandKit,
+  useBrandKit,
+  setUseBrandKit,
 }) => {
   const canSubmit = mode === 'edit' 
     ? isImageUploaded && (selectedPresets.length > 0 || prompt.trim() !== '') && !isLoading
@@ -84,6 +97,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     onSelectedPresetsChange(newSelection);
   };
   
+  const handleStarterPack = () => {
+    if (isLoading || !isImageUploaded) return;
+    const starterPackIds = ['t-shirt', 'mug', 'hoodie'];
+    const starterPackPresets = MERCH_PRESETS.filter(p => starterPackIds.includes(p.id));
+    onGenerateBatch(starterPackPresets);
+  };
+
   const handleSubmit = () => {
     if (isLoading) return;
     if (mode === 'edit') {
@@ -143,23 +163,33 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     )
                 })}
             </div>
-            <button
-              onClick={onSuggest}
-              disabled={!isImageUploaded || isLoading || isSuggesting}
-              className="w-full mt-2 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-cyan-200 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50 focus:ring-4 focus:ring-cyan-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              {isSuggesting ? (
-                <>
-                <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  Suggesting...
-                </>
-              ) : (
-                <>
-                  <LightbulbIcon className="w-4 h-4 mr-2" />
-                  Smart Suggest Products
-                </>
-              )}
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                <button
+                  onClick={handleStarterPack}
+                  disabled={!isImageUploaded || isLoading || isSuggesting}
+                  className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-purple-200 bg-purple-900/50 rounded-lg hover:bg-purple-800/50 focus:ring-4 focus:ring-purple-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                    <PackageIcon className="w-4 h-4 mr-2" />
+                    Generate Starter Pack
+                </button>
+                <button
+                  onClick={onSuggest}
+                  disabled={!isImageUploaded || isLoading || isSuggesting}
+                  className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-cyan-200 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50 focus:ring-4 focus:ring-cyan-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {isSuggesting ? (
+                    <>
+                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      Suggesting...
+                    </>
+                  ) : (
+                    <>
+                      <LightbulbIcon className="w-4 h-4 mr-2" />
+                      Smart Suggest Products
+                    </>
+                  )}
+                </button>
+            </div>
           </div>
 
           <div className="flex items-center">
@@ -190,8 +220,24 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           disabled={(mode === 'edit' && (!isImageUploaded || selectedPresets.length > 1)) || isLoading}
         />
       </div>
-
+      
       <div className="border-t border-gray-700 pt-4 flex flex-col gap-4">
+          
+          {mode === 'edit' && (
+             <details className="group bg-gray-900/30 rounded-lg">
+                <summary className="p-3 cursor-pointer text-sm font-medium text-gray-300 list-none flex items-center justify-between hover:bg-gray-700/50 rounded-t-lg">
+                    <span className='flex items-center gap-2'>
+                      <PaintBrushIcon className="w-5 h-5 text-purple-400" />
+                      Brand Kit (Optional)
+                    </span>
+                    <span className="transition-transform duration-200 group-open:rotate-90">▶</span>
+                </summary>
+                <div className="p-4 border-t border-gray-700">
+                    <BrandKitPanel brandKit={brandKit} onUpdateBrandKit={onUpdateBrandKit} />
+                </div>
+            </details>
+          )}
+
           <div className="relative">
             <label htmlFor="negative-prompt" className="block mb-2 text-sm font-medium text-gray-300">
               Negative Prompt (what to avoid)
@@ -247,6 +293,28 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             </>
           )}
       </div>
+
+       {mode === 'edit' && (
+         <div className="flex items-center justify-start bg-gray-700/50 p-3 rounded-lg">
+            <label htmlFor="use-brand-kit" className="flex items-center cursor-pointer">
+              <div className="relative">
+                <input 
+                  id="use-brand-kit" 
+                  type="checkbox" 
+                  className="sr-only" 
+                  checked={useBrandKit} 
+                  onChange={(e) => setUseBrandKit(e.target.checked)} 
+                  disabled={isLoading || !isImageUploaded}
+                />
+                <div className={`block w-10 h-6 rounded-full transition ${useBrandKit ? 'bg-purple-600' : 'bg-gray-600'}`}></div>
+                <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${useBrandKit ? 'transform translate-x-4' : ''}`}></div>
+              </div>
+              <div className="ml-3 text-sm font-medium text-gray-300">
+                Apply Brand Kit
+              </div>
+            </label>
+          </div>
+       )}
 
       <div className="flex flex-col sm:flex-row gap-4 mt-auto pt-4">
         <button

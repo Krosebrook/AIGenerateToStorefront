@@ -181,7 +181,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                             className="flex items-center gap-2 px-4 py-2 bg-green-600/90 backdrop-blur-sm text-white rounded-lg hover:bg-green-500 transition-colors duration-200"
                           >
                               <ShopifyIcon className="w-5 h-5" />
-                              Push to Shopify
+                              Create Product Listing
                           </button>
                         )}
                      </div>

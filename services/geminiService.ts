@@ -1,5 +1,6 @@
-import { GoogleGenAI, Modality, Type } from "@google/genai";
+import { GoogleGenAI, Modality, Type, Part } from "@google/genai";
 import { ShopifyProductDetails } from "../App";
+import { BrandKit } from "../components/BrandKitPanel";
 
 const API_KEY = process.env.API_KEY;
 
@@ -39,26 +40,52 @@ export async function generateImageFromPrompt(prompt: string, negativePrompt: st
   }
 }
 
-export async function editImageWithPrompt(base64ImageData: string, mimeType: string, prompt: string, negativePrompt: string): Promise<string> {
+export async function editImageWithPrompt(
+  base64ImageData: string, 
+  mimeType: string, 
+  prompt: string, 
+  negativePrompt: string,
+  brandKit?: BrandKit
+): Promise<string> {
   try {
-    const finalPrompt = negativePrompt
-      ? `${prompt}\n\nNegative prompt: please avoid ${negativePrompt}`
-      : prompt;
+    
+    let finalPrompt = prompt;
+
+    if (brandKit && (brandKit.logo || brandKit.colors.length > 0)) {
+        let brandInstructions = [];
+        if (brandKit.logo) {
+            brandInstructions.push("The second image provided is a brand logo. Please incorporate it naturally onto the product shown in the first image.");
+        }
+        if (brandKit.colors.length > 0) {
+            brandInstructions.push(`The design should prioritize or be complemented by the following brand colors: ${brandKit.colors.join(', ')}.`);
+        }
+        if (brandInstructions.length > 0) {
+            finalPrompt += `\n\n**Brand Guidelines:** ${brandInstructions.join(' ')}`;
+        }
+    }
+
+    if (negativePrompt) {
+        finalPrompt += `\n\n**Negative Prompt:** Please avoid ${negativePrompt}`;
+    }
+
+    const parts: Part[] = [
+      { inlineData: { data: base64ImageData, mimeType: mimeType } }
+    ];
+
+    if (brandKit?.logo) {
+      const [logoHeader, logoData] = brandKit.logo.split(';base64,');
+      const logoMimeType = logoHeader.replace('data:', '');
+      parts.push({
+        inlineData: { data: logoData, mimeType: logoMimeType }
+      });
+    }
+
+    parts.push({ text: finalPrompt });
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
-        parts: [
-          {
-            inlineData: {
-              data: base64ImageData,
-              mimeType: mimeType,
-            },
-          },
-          {
-            text: finalPrompt,
-          },
-        ],
+        parts: parts,
       },
       config: {
         responseModalities: [Modality.IMAGE],
@@ -115,7 +142,17 @@ export async function suggestProductsForImage(base64ImageData: string, mimeType:
 }
 
 export async function generateProductDetails(base64ImageData: string, mimeType: string, productName: string): Promise<ShopifyProductDetails> {
-  const prompt = `Generate a catchy product title and a compelling product description for a ${productName} featuring this design. The title should be short and punchy. The description should be 2-3 sentences long and highlight the design's appeal. Respond in a valid JSON object with two keys: "title" and "description".`;
+  const prompt = `
+    You are a professional e-commerce copywriter. For the provided image design on a ${productName}, generate a complete marketing package.
+    The response must be a single, valid JSON object.
+
+    The JSON object should contain the following keys:
+    - "title": A short, catchy, and SEO-friendly product title (max 60 characters).
+    - "description": A compelling product description (2-3 sentences) that highlights the design's unique appeal and the product's quality.
+    - "socialMediaCaption": A ready-to-use caption for an Instagram or Facebook post, including 1-2 relevant emojis.
+    - "adCopy": An array of two distinct, short ad copy variations suitable for social media ads. Each variation should have a different angle (e.g., one focuses on the design, the other on the feeling it evokes).
+    - "hashtags": An array of 5-7 relevant and popular hashtags (without the '#' symbol).
+  `;
 
   try {
      const response = await ai.models.generateContent({
@@ -138,9 +175,23 @@ export async function generateProductDetails(base64ImageData: string, mimeType: 
             description: {
               type: Type.STRING,
               description: 'The compelling product description.'
+            },
+            socialMediaCaption: {
+              type: Type.STRING,
+              description: 'A caption for social media posts.'
+            },
+            adCopy: {
+              type: Type.ARRAY,
+              description: 'Two distinct ad copy variations.',
+              items: { type: Type.STRING }
+            },
+            hashtags: {
+              type: Type.ARRAY,
+              description: 'An array of 5-7 relevant hashtags.',
+              items: { type: Type.STRING }
             }
           },
-          required: ['title', 'description']
+          required: ['title', 'description', 'socialMediaCaption', 'adCopy', 'hashtags']
         }
       }
     });
