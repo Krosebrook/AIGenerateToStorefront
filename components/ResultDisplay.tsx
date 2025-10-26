@@ -4,13 +4,20 @@ import { PhotoIcon } from './icons/PhotoIcon';
 import { ExclamationTriangleIcon } from './icons/ExclamationTriangleIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ShopifyIcon } from './icons/ShopifyIcon';
+import { GeneratedImage } from '../App';
+import { ChevronLeftIcon } from './icons/ChevronLeftIcon';
+import { ChevronRightIcon } from './icons/ChevronRightIcon';
+
 
 interface ResultDisplayProps {
-  generatedImageUrl: string | null;
+  generatedImages: GeneratedImage[];
   isLoading: boolean;
   error: string | null;
   onPushToShopify: () => void;
   showShopifyButton: boolean;
+  activeResultIndex: number;
+  setActiveResultIndex: (index: number) => void;
+  loadingProgress: { current: number, total: number } | null;
 }
 
 const LOADING_MESSAGES = [
@@ -22,37 +29,71 @@ const LOADING_MESSAGES = [
 ];
 
 
-export const ResultDisplay: React.FC<ResultDisplayProps> = ({ generatedImageUrl, isLoading, error, onPushToShopify, showShopifyButton }) => {
+export const ResultDisplay: React.FC<ResultDisplayProps> = ({ 
+  generatedImages, 
+  isLoading, 
+  error, 
+  onPushToShopify, 
+  showShopifyButton,
+  activeResultIndex,
+  setActiveResultIndex,
+  loadingProgress,
+}) => {
+  
+  const currentImage = generatedImages[activeResultIndex];
+
   const handleDownload = () => {
-    if (generatedImageUrl) {
+    if (currentImage) {
       const link = document.createElement('a');
-      link.href = generatedImageUrl;
-      link.download = 'generated-image.png';
+      link.href = currentImage.url;
+      link.download = `${currentImage.name.replace(/\s+/g, '_')}-mockup.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
   };
+  
+  const handlePrev = () => {
+    setActiveResultIndex(Math.max(0, activeResultIndex - 1));
+  };
+  
+  const handleNext = () => {
+    setActiveResultIndex(Math.min(generatedImages.length - 1, activeResultIndex + 1));
+  };
 
   const LoadingPlaceholder = () => {
     const [message, setMessage] = useState(LOADING_MESSAGES[0]);
+    const [isFading, setIsFading] = useState(false);
 
     useEffect(() => {
-        let index = 0;
+        const messageDuration = 2700;
+        const fadeDuration = 500; // should match transition-duration
+
         const intervalId = setInterval(() => {
-            index = (index + 1) % LOADING_MESSAGES.length;
-            setMessage(LOADING_MESSAGES[index]);
-        }, 2500);
+            setIsFading(true);
+            setTimeout(() => {
+                setMessage(prevMessage => {
+                    const currentIndex = LOADING_MESSAGES.indexOf(prevMessage);
+                    const nextIndex = (currentIndex + 1) % LOADING_MESSAGES.length;
+                    return LOADING_MESSAGES[nextIndex];
+                });
+                setIsFading(false);
+            }, fadeDuration);
+        }, messageDuration);
 
         return () => clearInterval(intervalId);
     }, []);
+
+    const progressText = loadingProgress 
+        ? `Generating mockup ${loadingProgress.current} of ${loadingProgress.total}...`
+        : "Generating Your Image";
 
     return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800/50 rounded-2xl p-8 text-center relative overflow-hidden">
             <SparkleBackground />
             <SparklesIcon className="w-12 h-12 text-purple-400 mb-4 animate-spin" style={{ animationDuration: '3s' }}/>
-            <h3 className="text-xl font-semibold text-gray-200">Generating Your Image</h3>
-            <p className="text-gray-400 mt-2 h-5 transition-opacity duration-300 ease-in-out">
+            <h3 className="text-xl font-semibold text-gray-200">{progressText}</h3>
+            <p className={`text-gray-400 mt-2 h-5 transition-opacity duration-500 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
                 {message}
             </p>
             <div className="w-full max-w-xs mt-8 bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
@@ -97,10 +138,36 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ generatedImageUrl,
         <div className="flex-grow flex items-center justify-center">
             {isLoading ? <LoadingPlaceholder /> :
              error ? <ErrorState /> :
-             generatedImageUrl ? (
+             generatedImages.length > 0 && currentImage ? (
                  <div className="relative group w-full h-full flex items-center justify-center">
-                     <img src={generatedImageUrl} alt="Generated result" className="max-w-full max-h-full object-contain rounded-lg" />
-                     <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                     <img src={currentImage.url} alt={currentImage.name} className="max-w-full max-h-full object-contain rounded-lg" />
+                     
+                     {/* Carousel controls */}
+                     {generatedImages.length > 1 && (
+                        <>
+                            <button 
+                                onClick={handlePrev} 
+                                disabled={activeResultIndex === 0}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-gray-900/50 rounded-full text-white hover:bg-gray-700 disabled:opacity-0 transition-all"
+                                aria-label="Previous image"
+                            >
+                                <ChevronLeftIcon className="w-6 h-6" />
+                            </button>
+                            <button 
+                                onClick={handleNext} 
+                                disabled={activeResultIndex === generatedImages.length - 1}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gray-900/50 rounded-full text-white hover:bg-gray-700 disabled:opacity-0 transition-all"
+                                aria-label="Next image"
+                            >
+                                <ChevronRightIcon className="w-6 h-6" />
+                            </button>
+                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900/80 backdrop-blur-sm rounded-full text-sm font-semibold">
+                                {currentImage.name} ({activeResultIndex + 1} / {generatedImages.length})
+                             </div>
+                        </>
+                     )}
+
+                     <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <button
                           onClick={handleDownload}
                           className="flex items-center gap-2 px-4 py-2 bg-gray-900/80 backdrop-blur-sm text-white rounded-lg hover:bg-purple-600 transition-colors duration-200"

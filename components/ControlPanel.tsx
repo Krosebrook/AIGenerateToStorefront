@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ArrowPathIcon } from './icons/ArrowPathIcon';
 import { LightbulbIcon } from './icons/LightbulbIcon';
 import { AppMode } from './ModeSelector';
+
+export interface MerchPreset {
+    id: string;
+    name: string;
+    template: string;
+}
 
 interface ControlPanelProps {
   mode: AppMode;
@@ -16,13 +22,14 @@ interface ControlPanelProps {
   onSuggest: () => void;
   isSuggesting: boolean;
   suggestions: string[];
-  onProductSelect: (name: string) => void;
+  selectedPresets: MerchPreset[];
+  onSelectedPresetsChange: (presets: MerchPreset[]) => void;
 }
 
-const MERCH_PRESETS = [
+const MERCH_PRESETS: MerchPreset[] = [
     { id: 't-shirt', name: 'T-Shirt', template: 'Create a photorealistic mockup of this design on the chest of a premium, soft cotton white t-shirt. The t-shirt should be laid flat on a clean, light gray surface with subtle, natural shadows.' },
     { id: 'mug', name: 'Mug', template: 'Render this design on a glossy white ceramic coffee mug. The mockup should be photorealistic, placed on a dark wooden coffee shop table next to a window with soft, morning light creating gentle reflections.' },
-    { id: 'poster', name: 'Poster', template: 'Generate a high-resolution poster mockup of this design inside a thin black frame. The poster should be hanging on a lightly textured, off-white wall in a modern, minimalist apartment with a plant visible in the soft-focus background.' },
+    { id: 'poster', name: 'Poster', template: 'Generate a photorealistic mockup of this design as a high-resolution poster inside a thin, matte black frame. The poster should be hanging on a lightly textured, off-white wall in a modern, minimalist apartment setting. The lighting should be soft and indirect, coming from a large window just out of frame. Include a softly blurred background with a hint of a vibrant green potted plant on a wooden floor, adding a touch of life to the scene.' },
     { id: 'hoodie', name: 'Hoodie', template: 'Display this design on the front of a comfortable, slightly wrinkled black pullover hoodie. The mockup should show realistic fabric texture and be laid flat on a neutral, concrete-textured background.'},
     { id: 'stickers', name: 'Stickers', template: 'Create a mockup of multiple die-cut vinyl stickers of this design. The stickers should have a clean white border and a glossy finish, scattered realistically on a simple, pastel-colored background.'},
     { id: 'phone-case', name: 'Phone Case', template: 'Generate a mockup of this design on a sleek, matte black smartphone case (similar to an iPhone). The phone should be resting at a slight angle on a clean, minimalist desk surface next to a pair of wireless earbuds.'},
@@ -42,18 +49,22 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onSuggest,
   isSuggesting,
   suggestions,
-  onProductSelect,
+  selectedPresets,
+  onSelectedPresetsChange,
 }) => {
   const canSubmit = mode === 'edit' 
-    ? isImageUploaded && prompt.trim() !== '' && !isLoading
+    ? isImageUploaded && (selectedPresets.length > 0 || prompt.trim() !== '') && !isLoading
     : prompt.trim() !== '' && !isLoading;
 
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
-
-  const handlePresetClick = (preset: typeof MERCH_PRESETS[0]) => {
-    setPrompt(preset.template);
-    setSelectedPreset(preset.id);
-    onProductSelect(preset.name);
+  const handlePresetClick = (preset: MerchPreset) => {
+    const isCurrentlySelected = selectedPresets.some(p => p.id === preset.id);
+    let newSelection;
+    if (isCurrentlySelected) {
+        newSelection = selectedPresets.filter(p => p.id !== preset.id);
+    } else {
+        newSelection = [...selectedPresets, preset];
+    }
+    onSelectedPresetsChange(newSelection);
   };
   
   const handleSubmit = () => {
@@ -65,14 +76,20 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   }
   
   useEffect(() => {
-    const matchingPreset = MERCH_PRESETS.find(p => p.template === prompt);
-    if (!matchingPreset) {
-      setSelectedPreset(null);
-    } else {
-      setSelectedPreset(matchingPreset.id);
-      onProductSelect(matchingPreset.name);
+    if (mode === 'edit') {
+      if (selectedPresets.length === 1) {
+        setPrompt(selectedPresets[0].template);
+      } else {
+        setPrompt('');
+      }
     }
-  }, [prompt, onProductSelect]);
+  }, [selectedPresets, mode, setPrompt]);
+
+  const getGenerateButtonText = () => {
+    if (mode === 'generate') return 'Generate Image';
+    if (selectedPresets.length > 1) return `Generate ${selectedPresets.length} Mockups`;
+    return 'Generate';
+  };
 
 
   return (
@@ -85,11 +102,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <>
           <div className="flex flex-col gap-3">
             <label className="block text-sm font-medium text-gray-300">
-              Start with a Printify product
+              Start with a Printify product (select one or more)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {MERCH_PRESETS.map((preset) => {
-                    const isSelected = selectedPreset === preset.id;
+                    const isSelected = selectedPresets.some(p => p.id === preset.id);
                     const isSuggested = suggestions.map(s => s.toLowerCase()).includes(preset.name.toLowerCase());
                     return (
                         <button
@@ -98,7 +115,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                             disabled={!isImageUploaded || isLoading}
                             className={`p-2 text-xs font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed
                                 ${isSelected ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500'}
-                                ${isSuggested ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-cyan-400' : ''}
+                                ${isSuggested && !isSelected ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-cyan-400' : ''}
                             `}
                         >
                           {preset.name}
@@ -140,11 +157,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <textarea
           id="prompt"
           rows={mode === 'edit' ? 3 : 5}
-          className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition flex-grow"
-          placeholder={mode === 'edit' ? 'e.g., place this design on a tote bag made of canvas' : 'e.g., A cute cat astronaut floating in space, digital art'}
+          className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition flex-grow disabled:bg-gray-700/50"
+          placeholder={
+            mode === 'edit' 
+              ? selectedPresets.length > 1
+                ? 'Using selected product templates...'
+                : 'e.g., place this design on a tote bag made of canvas' 
+              : 'e.g., A cute cat astronaut floating in space, digital art'
+          }
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          disabled={(mode === 'edit' && !isImageUploaded) || isLoading}
+          disabled={(mode === 'edit' && (!isImageUploaded || selectedPresets.length > 1)) || isLoading}
         />
       </div>
       <div className="flex flex-col sm:flex-row gap-4 mt-2">
@@ -164,7 +187,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           ) : (
             <>
               <SparklesIcon className="w-5 h-5 mr-2" />
-              Generate
+              {getGenerateButtonText()}
             </>
           )}
         </button>
