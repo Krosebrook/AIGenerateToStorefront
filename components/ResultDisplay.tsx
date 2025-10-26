@@ -1,14 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { PhotoIcon } from './icons/PhotoIcon';
 import { ExclamationTriangleIcon } from './icons/ExclamationTriangleIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { ShopifyIcon } from './icons/ShopifyIcon';
 
 interface ResultDisplayProps {
   generatedImageUrl: string | null;
   isLoading: boolean;
   error: string | null;
+  onPushToShopify: () => void;
+  showShopifyButton: boolean;
 }
 
 const LOADING_MESSAGES = [
@@ -20,7 +22,7 @@ const LOADING_MESSAGES = [
 ];
 
 
-export const ResultDisplay: React.FC<ResultDisplayProps> = ({ generatedImageUrl, isLoading, error }) => {
+export const ResultDisplay: React.FC<ResultDisplayProps> = ({ generatedImageUrl, isLoading, error, onPushToShopify, showShopifyButton }) => {
   const handleDownload = () => {
     if (generatedImageUrl) {
       const link = document.createElement('a');
@@ -98,13 +100,24 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ generatedImageUrl,
              generatedImageUrl ? (
                  <div className="relative group w-full h-full flex items-center justify-center">
                      <img src={generatedImageUrl} alt="Generated result" className="max-w-full max-h-full object-contain rounded-lg" />
-                     <button
-                        onClick={handleDownload}
-                        className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-gray-900/70 text-white rounded-lg hover:bg-purple-600 transition-all duration-300 opacity-0 group-hover:opacity-100"
-                        >
-                        <DownloadIcon className="w-5 h-5" />
-                        Download
-                    </button>
+                     <div className="absolute bottom-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <button
+                          onClick={handleDownload}
+                          className="flex items-center gap-2 px-4 py-2 bg-gray-900/80 backdrop-blur-sm text-white rounded-lg hover:bg-purple-600 transition-colors duration-200"
+                          >
+                          <DownloadIcon className="w-5 h-5" />
+                          Download
+                        </button>
+                        {showShopifyButton && (
+                          <button
+                            onClick={onPushToShopify}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600/90 backdrop-blur-sm text-white rounded-lg hover:bg-green-500 transition-colors duration-200"
+                          >
+                              <ShopifyIcon className="w-5 h-5" />
+                              Push to Shopify
+                          </button>
+                        )}
+                     </div>
                  </div>
              ) : (
                 <InitialState />

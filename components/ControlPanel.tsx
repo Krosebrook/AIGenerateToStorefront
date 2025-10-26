@@ -1,159 +1,161 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ArrowPathIcon } from './icons/ArrowPathIcon';
+import { LightbulbIcon } from './icons/LightbulbIcon';
+import { AppMode } from './ModeSelector';
 
 interface ControlPanelProps {
+  mode: AppMode;
   prompt: string;
   setPrompt: (prompt: string) => void;
-  onSubmit: () => void;
+  onGenerateEdit: () => void;
+  onGenerateNew: (prompt: string) => void;
   onReset: () => void;
   isLoading: boolean;
   isImageUploaded: boolean;
+  onSuggest: () => void;
+  isSuggesting: boolean;
+  suggestions: string[];
+  onProductSelect: (name: string) => void;
 }
 
-const EDITING_SUGGESTIONS = [
-  'Add a retro filter',
-  'Remove the background',
-  'Change color to blue',
-  'Make the image black and white',
-  'Apply a cartoon style',
-  'Add a neon glow effect to the subject',
-  'Place the subject on a beach at sunset',
-  'Make the main subject wear a party hat',
-];
-
 const MERCH_PRESETS = [
-    { name: 'Select a preset...', template: '' },
-    { name: 'T-Shirt', template: 'Place this image on a high-quality, realistic white t-shirt mockup, shown flat on a neutral background.' },
-    { name: 'Mug', template: 'Place this image on a glossy white ceramic coffee mug. The mug should be on a wooden coffee shop table with soft lighting.' },
-    { name: 'Poster', template: 'Create a high-resolution poster mockup featuring this design, hanging on a modern, minimalist apartment wall.' },
+    { id: 't-shirt', name: 'T-Shirt', template: 'Create a photorealistic mockup of this design on the chest of a premium, soft cotton white t-shirt. The t-shirt should be laid flat on a clean, light gray surface with subtle, natural shadows.' },
+    { id: 'mug', name: 'Mug', template: 'Render this design on a glossy white ceramic coffee mug. The mockup should be photorealistic, placed on a dark wooden coffee shop table next to a window with soft, morning light creating gentle reflections.' },
+    { id: 'poster', name: 'Poster', template: 'Generate a high-resolution poster mockup of this design inside a thin black frame. The poster should be hanging on a lightly textured, off-white wall in a modern, minimalist apartment with a plant visible in the soft-focus background.' },
+    { id: 'hoodie', name: 'Hoodie', template: 'Display this design on the front of a comfortable, slightly wrinkled black pullover hoodie. The mockup should show realistic fabric texture and be laid flat on a neutral, concrete-textured background.'},
+    { id: 'stickers', name: 'Stickers', template: 'Create a mockup of multiple die-cut vinyl stickers of this design. The stickers should have a clean white border and a glossy finish, scattered realistically on a simple, pastel-colored background.'},
+    { id: 'phone-case', name: 'Phone Case', template: 'Generate a mockup of this design on a sleek, matte black smartphone case (similar to an iPhone). The phone should be resting at a slight angle on a clean, minimalist desk surface next to a pair of wireless earbuds.'},
+    { id: 'tote-bag', name: 'Tote Bag', template: 'Create a photorealistic mockup of this design on a natural-colored canvas tote bag. The bag should show realistic fabric texture and creases, hanging from a hook on a sunlit, rustic brick wall.' },
+    { id: 'coloring-book', name: 'Adult Coloring Book', template: 'Convert this image into a detailed, black-and-white line art page for an adult coloring book. The final image should be presented as a crisp page in an open coloring book, with colored pencils resting nearby.' }
 ];
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
+  mode,
   prompt,
   setPrompt,
-  onSubmit,
+  onGenerateEdit,
+  onGenerateNew,
   onReset,
   isLoading,
   isImageUploaded,
+  onSuggest,
+  isSuggesting,
+  suggestions,
+  onProductSelect,
 }) => {
-  const canSubmit = isImageUploaded && prompt.trim() !== '' && !isLoading;
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canSubmit = mode === 'edit' 
+    ? isImageUploaded && prompt.trim() !== '' && !isLoading
+    : prompt.trim() !== '' && !isLoading;
 
-  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setPrompt(value);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
 
-    if (value.trim()) {
-      const filtered = EDITING_SUGGESTIONS.filter(s =>
-        s.toLowerCase().includes(value.toLowerCase())
-      );
-      setSuggestions(filtered);
-      setShowSuggestions(filtered.length > 0);
-    } else {
-      setShowSuggestions(false);
-    }
+  const handlePresetClick = (preset: typeof MERCH_PRESETS[0]) => {
+    setPrompt(preset.template);
+    setSelectedPreset(preset.id);
+    onProductSelect(preset.name);
   };
   
-  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedTemplate = e.target.value;
-    setPrompt(selectedTemplate);
-    setShowSuggestions(false);
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    setPrompt(suggestion);
-    setShowSuggestions(false);
-  };
+  const handleSubmit = () => {
+    if (mode === 'edit') {
+      onGenerateEdit();
+    } else {
+      onGenerateNew(prompt);
+    }
+  }
   
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-    };
+    const matchingPreset = MERCH_PRESETS.find(p => p.template === prompt);
+    if (!matchingPreset) {
+      setSelectedPreset(null);
+    } else {
+      setSelectedPreset(matchingPreset.id);
+      onProductSelect(matchingPreset.name);
+    }
+  }, [prompt, onProductSelect]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   return (
-    <div className="bg-gray-800/50 p-6 rounded-2xl shadow-md border border-gray-700 flex flex-col gap-4">
-      <h2 className="text-lg font-semibold text-gray-200">2. Describe Your Mockup or Edit</h2>
-       <div>
-        <label htmlFor="merch-preset" className="block mb-2 text-sm font-medium text-gray-300">
-          Start with a merch preset
-        </label>
-        <select
-            id="merch-preset"
-            className="block w-full p-2.5 text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition"
-            onChange={handlePresetChange}
-            disabled={!isImageUploaded || isLoading}
-            value={MERCH_PRESETS.find(p => p.template === prompt)?.template || ''}
-        >
-            {MERCH_PRESETS.map((preset) => (
-            <option key={preset.name} value={preset.template}>
-                {preset.name}
-            </option>
-            ))}
-        </select>
-       </div>
+    <div className="bg-gray-800/50 p-6 rounded-2xl shadow-md border border-gray-700 flex flex-col gap-4 h-full">
+      <h2 className="text-lg font-semibold text-gray-200">
+        {mode === 'edit' ? '2. Describe Your Mockup or Edit' : '1. Describe The Image You Want'}
+      </h2>
+      
+      {mode === 'edit' && (
+        <>
+          <div className="flex flex-col gap-3">
+            <label className="block text-sm font-medium text-gray-300">
+              Start with a Printify product
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {MERCH_PRESETS.map((preset) => {
+                    const isSelected = selectedPreset === preset.id;
+                    const isSuggested = suggestions.map(s => s.toLowerCase()).includes(preset.name.toLowerCase());
+                    return (
+                        <button
+                            key={preset.id}
+                            onClick={() => handlePresetClick(preset)}
+                            disabled={!isImageUploaded || isLoading}
+                            className={`p-2 text-xs font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed
+                                ${isSelected ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500'}
+                                ${isSuggested ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-cyan-400' : ''}
+                            `}
+                        >
+                          {preset.name}
+                        </button>
+                    )
+                })}
+            </div>
+            <button
+              onClick={onSuggest}
+              disabled={!isImageUploaded || isLoading || isSuggesting}
+              className="w-full mt-2 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-cyan-200 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50 focus:ring-4 focus:ring-cyan-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+            >
+              {isSuggesting ? (
+                <>
+                <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  Suggesting...
+                </>
+              ) : (
+                <>
+                  <LightbulbIcon className="w-4 h-4 mr-2" />
+                  Smart Suggest Products
+                </>
+              )}
+            </button>
+          </div>
 
-        <div className="flex items-center">
-            <div className="flex-grow border-t border-gray-600"></div>
-            <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">Or</span>
-            <div className="flex-grow border-t border-gray-600"></div>
-        </div>
+          <div className="flex items-center">
+              <div className="flex-grow border-t border-gray-600"></div>
+              <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">Or</span>
+              <div className="flex-grow border-t border-gray-600"></div>
+          </div>
+        </>
+      )}
 
-      <div className="relative" ref={containerRef}>
+      <div className="relative flex-grow flex flex-col">
         <label htmlFor="prompt" className="block mb-2 text-sm font-medium text-gray-300">
-          Enter a custom prompt
+          {mode === 'edit' ? 'Enter a custom prompt' : 'Prompt'}
         </label>
         <textarea
           id="prompt"
-          rows={4}
-          className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition"
-          placeholder="e.g., add a cat wearing a party hat"
+          rows={mode === 'edit' ? 3 : 5}
+          className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition flex-grow"
+          placeholder={mode === 'edit' ? 'e.g., place this design on a tote bag made of canvas' : 'e.g., A cute cat astronaut floating in space, digital art'}
           value={prompt}
-          onChange={handlePromptChange}
-          onFocus={() => {
-              if (prompt.trim()) {
-                  const filtered = EDITING_SUGGESTIONS.filter(s => s.toLowerCase().includes(prompt.toLowerCase()));
-                  if (filtered.length > 0) setShowSuggestions(true);
-              }
-          }}
-          disabled={!isImageUploaded || isLoading}
+          onChange={(e) => setPrompt(e.target.value)}
+          disabled={(mode === 'edit' && !isImageUploaded) || isLoading}
         />
-        {showSuggestions && suggestions.length > 0 && (
-          <ul className="absolute z-20 w-full bg-gray-700 border border-gray-600 rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto">
-            {suggestions.map((suggestion, index) => (
-              <li
-                key={index}
-                className="px-4 py-2 text-sm text-gray-200 cursor-pointer hover:bg-purple-600"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSuggestionClick(suggestion);
-                }}
-              >
-                {suggestion}
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
       <div className="flex flex-col sm:flex-row gap-4 mt-2">
         <button
-          onClick={onSubmit}
+          onClick={handleSubmit}
           disabled={!canSubmit}
           className="flex-grow inline-flex items-center justify-center px-5 py-3 text-base font-medium text-center text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:ring-4 focus:ring-purple-300 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-200"
         >
           {isLoading ? (
             <>
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>

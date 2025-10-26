@@ -1,4 +1,3 @@
-
 import React, { useCallback, useState } from 'react';
 import { UploadIcon } from './icons/UploadIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
@@ -38,7 +37,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
   }, [onImageUpload]);
 
   return (
-    <div className="bg-gray-800/50 p-6 rounded-2xl shadow-md border border-gray-700">
+    <div className={`bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700 transition-transform duration-300 ease-in-out ${sourceImageUrl ? 'scale-[1.02]' : 'scale-100'}`}>
       <h2 className="text-lg font-semibold text-gray-200 mb-4">1. Upload Your Image</h2>
       <div className="relative">
         {sourceImageUrl ? (
