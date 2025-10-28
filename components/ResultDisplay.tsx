@@ -139,38 +139,40 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
             {isLoading ? <LoadingPlaceholder /> :
              error ? <ErrorState /> :
              generatedImages.length > 0 && currentImage ? (
-                 <div className="relative group w-full h-full flex items-center justify-center">
-                     <img src={currentImage.url} alt={currentImage.name} className="max-w-full max-h-full object-contain rounded-lg" />
-                     
-                     {/* Carousel controls */}
-                     {generatedImages.length > 1 && (
-                        <>
-                            <button 
-                                onClick={handlePrev} 
-                                disabled={activeResultIndex === 0}
-                                className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-gray-900/50 rounded-full text-white hover:bg-gray-700 disabled:opacity-0 transition-all"
-                                aria-label="Previous image"
-                            >
-                                <ChevronLeftIcon className="w-6 h-6" />
-                            </button>
-                            <button 
-                                onClick={handleNext} 
-                                disabled={activeResultIndex === generatedImages.length - 1}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gray-900/50 rounded-full text-white hover:bg-gray-700 disabled:opacity-0 transition-all"
-                                aria-label="Next image"
-                            >
-                                <ChevronRightIcon className="w-6 h-6" />
-                            </button>
-                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900/80 backdrop-blur-sm rounded-full text-sm font-semibold">
-                                {currentImage.name} ({activeResultIndex + 1} / {generatedImages.length})
-                             </div>
-                        </>
-                     )}
+                 <div className="w-full h-full flex flex-col">
+                     <div className="relative flex-grow w-full flex items-center justify-center">
+                         <img src={currentImage.url} alt={currentImage.name} className="max-w-full max-h-full object-contain rounded-lg" />
+                         
+                         {/* Carousel controls */}
+                         {generatedImages.length > 1 && (
+                            <>
+                                <button 
+                                    onClick={handlePrev} 
+                                    disabled={activeResultIndex === 0}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-gray-900/50 rounded-full text-white hover:bg-gray-700 disabled:opacity-0 transition-all"
+                                    aria-label="Previous image"
+                                >
+                                    <ChevronLeftIcon className="w-6 h-6" />
+                                </button>
+                                <button 
+                                    onClick={handleNext} 
+                                    disabled={activeResultIndex === generatedImages.length - 1}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-gray-900/50 rounded-full text-white hover:bg-gray-700 disabled:opacity-0 transition-all"
+                                    aria-label="Next image"
+                                >
+                                    <ChevronRightIcon className="w-6 h-6" />
+                                </button>
+                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900/80 backdrop-blur-sm rounded-full text-sm font-semibold">
+                                    {currentImage.name} ({activeResultIndex + 1} / {generatedImages.length})
+                                 </div>
+                            </>
+                         )}
+                     </div>
 
-                     <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                         <button
                           onClick={handleDownload}
-                          className="flex items-center gap-2 px-4 py-2 bg-gray-900/80 backdrop-blur-sm text-white rounded-lg hover:bg-purple-600 transition-colors duration-200"
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 text-base font-medium bg-gray-700/80 backdrop-blur-sm text-white rounded-lg hover:bg-purple-600 transition-colors duration-200"
                           >
                           <DownloadIcon className="w-5 h-5" />
                           Download
@@ -178,7 +180,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                         {showShopifyButton && (
                           <button
                             onClick={onPushToShopify}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600/90 backdrop-blur-sm text-white rounded-lg hover:bg-green-500 transition-colors duration-200"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 text-base font-medium bg-green-600/90 backdrop-blur-sm text-white rounded-lg hover:bg-green-500 transition-colors duration-200"
                           >
                               <ShopifyIcon className="w-5 h-5" />
                               Create Product Listing

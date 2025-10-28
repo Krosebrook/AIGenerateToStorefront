@@ -9,6 +9,7 @@ import { PaintBrushIcon } from './icons/PaintBrushIcon';
 import { CustomTemplateModal } from './CustomTemplateModal';
 import { PlusCircleIcon } from './icons/PlusCircleIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
+import { NewspaperIcon } from './icons/NewspaperIcon';
 
 export interface MerchPreset {
     id: string;
@@ -44,6 +45,8 @@ interface ControlPanelProps {
   setUseBrandKit: (use: boolean) => void;
   customPresets: MerchPreset[];
   onUpdateCustomPresets: (presets: MerchPreset[]) => void;
+  onFetchNews: () => void;
+  isFetchingNews: boolean;
 }
 
 const MERCH_PRESETS: MerchPreset[] = [
@@ -89,6 +92,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   setUseBrandKit,
   customPresets,
   onUpdateCustomPresets,
+  onFetchNews,
+  isFetchingNews,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const allPresets = [...MERCH_PRESETS, ...customPresets];
@@ -172,7 +177,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <label className="block text-sm font-medium text-gray-300">
                 Start with a product (select one or more)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {allPresets.map((preset) => {
                       const isSelected = selectedPresets.some(p => p.id === preset.id);
                       const isSuggested = suggestions.map(s => s.toLowerCase()).includes(preset.name.toLowerCase());
@@ -182,7 +187,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                               onClick={() => handlePresetClick(preset)}
                               disabled={!isImageUploaded || isLoading}
                               className={`w-full h-full p-2 text-xs font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95
-                                  ${isSelected ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500 hover:bg-gray-600 hover:scale-105'}
+                                  ${isSelected ? 'bg-purple-600 border-purple-400 text-white active:bg-purple-700' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500 hover:bg-gray-600 hover:scale-105 active:bg-purple-500'}
                                   ${isSuggested && !isSelected ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-cyan-400' : ''}
                                   ${preset.isCustom ? 'border-dashed' : ''}
                               `}
@@ -210,46 +215,81 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     Create New
                 </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                  <button
+            </div>
+          </>
+        )}
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {mode === 'edit' ? (
+              <>
+                 <button
                     onClick={handleStarterPack}
-                    disabled={!isImageUploaded || isLoading || isSuggesting}
+                    disabled={!isImageUploaded || isLoading || isSuggesting || isFetchingNews}
                     className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-purple-200 bg-purple-900/50 rounded-lg hover:bg-purple-800/50 focus:ring-4 focus:ring-purple-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
                   >
                       <PackageIcon className="w-4 h-4 mr-2" />
-                      Generate Starter Pack
+                      Starter Pack
                   </button>
                   <button
                     onClick={onSuggest}
-                    disabled={!isImageUploaded || isLoading || isSuggesting}
+                    disabled={!isImageUploaded || isLoading || isSuggesting || isFetchingNews}
                     className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-cyan-200 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50 focus:ring-4 focus:ring-cyan-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
                   >
                     {isSuggesting ? (
                       <>
-                      <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         Suggesting...
                       </>
                     ) : (
                       <>
                         <LightbulbIcon className="w-4 h-4 mr-2" />
-                        Smart Suggest Products
+                        Smart Suggest
                       </>
                     )}
                   </button>
-              </div>
-            </div>
+                   <button
+                    onClick={onFetchNews}
+                    disabled={isLoading || isSuggesting || isFetchingNews}
+                    className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-amber-200 bg-amber-900/50 rounded-lg hover:bg-amber-800/50 focus:ring-4 focus:ring-amber-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    {isFetchingNews ? (
+                      <>
+                      <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Fetching News...
+                      </>
+                    ) : (
+                      <>
+                        <NewspaperIcon className="w-4 h-4 mr-2" />
+                        Fetch Latest News
+                      </>
+                    )}
+                  </button>
+              </>
+            ) : (
+               <button
+                onClick={onFetchNews}
+                disabled={isLoading || isSuggesting || isFetchingNews}
+                className="w-full md:col-span-3 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-amber-200 bg-amber-900/50 rounded-lg hover:bg-amber-800/50 focus:ring-4 focus:ring-amber-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+              >
+                {isFetchingNews ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Fetching News...
+                  </>
+                ) : (
+                  <>
+                    <NewspaperIcon className="w-4 h-4 mr-2" />
+                    Fetch Latest News
+                  </>
+                )}
+              </button>
+            )}
+        </div>
 
-            <div className="flex items-center">
-                <div className="flex-grow border-t border-gray-600"></div>
-                <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">Or</span>
-                <div className="flex-grow border-t border-gray-600"></div>
-            </div>
-          </>
-        )}
 
-        <div className="flex-grow flex flex-col">
+        <div className="flex-grow flex flex-col mt-2">
           <label htmlFor="prompt" className="block mb-2 text-sm font-medium text-gray-300">
-            {mode === 'edit' ? 'Enter a custom prompt' : 'Prompt'}
+            {mode === 'edit' ? 'Custom Prompt' : 'Prompt'}
           </label>
           <textarea
             id="prompt"
@@ -322,13 +362,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                 
                 <div>
                   <label className="block mb-2 text-sm font-medium text-gray-300">Aspect Ratio</label>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="flex flex-wrap justify-center gap-2">
                     {ASPECT_RATIO_OPTIONS.map(ar => (
                       <button
                         key={ar}
                         onClick={() => setAspectRatio(ar)}
                         disabled={isLoading}
-                        className={`py-2 px-1 text-sm font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed
+                        className={`py-2 px-3 text-sm font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed
                           ${aspectRatio === ar ? 'bg-purple-600 border-purple-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500'}
                         `}
                       >
@@ -371,7 +411,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           >
             {isLoading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>

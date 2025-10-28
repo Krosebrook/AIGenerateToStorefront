@@ -5,9 +5,10 @@ import { ControlPanel, MerchPreset } from './components/ControlPanel';
 import { ResultDisplay } from './components/ResultDisplay';
 import { ShopifyModal } from './components/ShopifyModal';
 import { ModeSelector, AppMode } from './components/ModeSelector';
-import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, generateImageFromPrompt } from './services/geminiService';
+import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, generateImageFromPrompt, fetchLatestNews, GroundingSource } from './services/geminiService';
 import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
 import { BrandKit } from './components/BrandKitPanel';
+import { NewsPanel } from './components/NewsPanel';
 
 export interface ShopifyProductDetails {
   title: string;
@@ -19,6 +20,12 @@ export interface ShopifyProductDetails {
 
 export interface GeneratedImage {
   name: string;
+  url: string;
+}
+
+export interface NewsArticle {
+  title: string;
+  summary: string;
   url: string;
 }
 
@@ -49,6 +56,11 @@ export default function App(): React.ReactElement {
   const [brandKit, setBrandKit] = useState<BrandKit>(initialBrandKit);
   const [useBrandKit, setUseBrandKit] = useState<boolean>(false);
   const [customPresets, setCustomPresets] = useState<MerchPreset[]>([]);
+
+  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
+  const [newsSources, setNewsSources] = useState<GroundingSource[]>([]);
+  const [isFetchingNews, setIsFetchingNews] = useState<boolean>(false);
+  const [newsError, setNewsError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -216,6 +228,9 @@ export default function App(): React.ReactElement {
     setSelectedPresets([]);
     setUseBrandKit(false);
     setMode('edit');
+    setNewsArticles([]);
+    setNewsSources([]);
+    setNewsError(null);
   }, []);
 
   const handleSuggest = useCallback(async () => {
@@ -256,6 +271,23 @@ export default function App(): React.ReactElement {
       };
     }
   }, [generatedImages, activeResultIndex]);
+
+  const handleFetchNews = useCallback(async () => {
+    setIsFetchingNews(true);
+    setNewsError(null);
+    setNewsArticles([]);
+    setNewsSources([]);
+    try {
+      const { articles, sources } = await fetchLatestNews();
+      setNewsArticles(articles);
+      setNewsSources(sources);
+    } catch (err) {
+      console.error(err);
+      setNewsError('Could not fetch the latest news. Please try again.');
+    } finally {
+      setIsFetchingNews(false);
+    }
+  }, []);
   
   const activeProduct = generatedImages[activeResultIndex];
 
@@ -302,6 +334,8 @@ export default function App(): React.ReactElement {
                   setUseBrandKit={setUseBrandKit}
                   customPresets={customPresets}
                   onUpdateCustomPresets={handleUpdateCustomPresets}
+                  onFetchNews={handleFetchNews}
+                  isFetchingNews={isFetchingNews}
                 />
               </div>
               <div className="flex flex-col">
@@ -317,6 +351,12 @@ export default function App(): React.ReactElement {
                 />
               </div>
             </div>
+             <NewsPanel 
+                articles={newsArticles}
+                sources={newsSources}
+                isLoading={isFetchingNews}
+                error={newsError}
+              />
           </div>
         </main>
         <footer className="text-center p-4 text-gray-500 text-sm">

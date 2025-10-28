@@ -1,5 +1,5 @@
 import { GoogleGenAI, Modality, Type, Part } from "@google/genai";
-import { ShopifyProductDetails } from "../App";
+import { ShopifyProductDetails, NewsArticle } from "../App";
 import { BrandKit } from "../components/BrandKitPanel";
 
 const API_KEY = process.env.API_KEY;
@@ -10,7 +10,49 @@ if (!API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
+export interface GroundingSource {
+    uri: string;
+    title: string;
+}
+
 const PRODUCT_LIST = ['T-Shirt', 'Mug', 'Poster', 'Hoodie', 'Stickers', 'Phone Case', 'Hat', 'Notebook', 'Tote Bag'].join(', ');
+
+export async function fetchLatestNews(): Promise<{ articles: NewsArticle[], sources: GroundingSource[] }> {
+  const prompt = 'Fetch the top 5 latest world news headlines. Respond ONLY with a valid JSON array where each object has "title", "summary", and "url" keys. Do not include any introductory text, markdown formatting, or explanations.';
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        tools: [{googleSearch: {}}],
+      },
+    });
+
+    // Clean the response text to extract the JSON part.
+    let jsonText = response.text;
+    const jsonStartIndex = jsonText.indexOf('[');
+    const jsonEndIndex = jsonText.lastIndexOf(']');
+    if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
+      jsonText = jsonText.substring(jsonStartIndex, jsonEndIndex + 1);
+    }
+
+    const articles = JSON.parse(jsonText) as NewsArticle[];
+    
+    const rawChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const sources: GroundingSource[] = rawChunks
+      .map(chunk => ({
+        uri: chunk.web?.uri || '',
+        title: chunk.web?.title || ''
+      }))
+      .filter(source => source.uri); // Filter out any empty sources
+
+    return { articles, sources };
+
+  } catch (error) {
+    console.error("Error calling Gemini API for news fetching:", error);
+    throw new Error("Failed to fetch news with Gemini API.");
+  }
+}
 
 export async function generateImageFromPrompt(prompt: string, negativePrompt: string, numberOfImages: number, aspectRatio: string): Promise<string[]> {
   try {
