@@ -48,6 +48,7 @@ export default function App(): React.ReactElement {
 
   const [brandKit, setBrandKit] = useState<BrandKit>(initialBrandKit);
   const [useBrandKit, setUseBrandKit] = useState<boolean>(false);
+  const [customPresets, setCustomPresets] = useState<MerchPreset[]>([]);
 
   useEffect(() => {
     try {
@@ -59,11 +60,26 @@ export default function App(): React.ReactElement {
       console.error("Failed to parse Brand Kit from localStorage", e);
       localStorage.removeItem('brandKit');
     }
+
+    try {
+      const savedPresets = localStorage.getItem('customMerchPresets');
+      if (savedPresets) {
+        setCustomPresets(JSON.parse(savedPresets));
+      }
+    } catch (e) {
+      console.error("Failed to parse custom presets from localStorage", e);
+      localStorage.removeItem('customMerchPresets');
+    }
   }, []);
 
   const handleUpdateBrandKit = useCallback((newKit: BrandKit) => {
     setBrandKit(newKit);
     localStorage.setItem('brandKit', JSON.stringify(newKit));
+  }, []);
+
+  const handleUpdateCustomPresets = useCallback((newPresets: MerchPreset[]) => {
+    setCustomPresets(newPresets);
+    localStorage.setItem('customMerchPresets', JSON.stringify(newPresets));
   }, []);
 
   const handleImageUpload = useCallback(async (file: File) => {
@@ -284,6 +300,8 @@ export default function App(): React.ReactElement {
                   onUpdateBrandKit={handleUpdateBrandKit}
                   useBrandKit={useBrandKit}
                   setUseBrandKit={setUseBrandKit}
+                  customPresets={customPresets}
+                  onUpdateCustomPresets={handleUpdateCustomPresets}
                 />
               </div>
               <div className="flex flex-col">
