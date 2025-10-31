@@ -41,11 +41,20 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
       <h2 className="text-lg font-semibold text-gray-200 mb-4">1. Upload Your Image</h2>
       <div className="relative">
         {sourceImageUrl ? (
-          <div className="relative group">
-            <img src={sourceImageUrl} alt="Source preview" className="w-full h-auto max-h-80 object-contain rounded-lg" />
+          <div className="relative group rounded-lg overflow-hidden max-h-80 flex items-center justify-center bg-black">
+            <div
+              className="absolute inset-0 bg-cover bg-center filter blur-lg scale-110 opacity-50"
+              style={{ backgroundImage: `url(${sourceImageUrl})` }}
+              aria-hidden="true"
+            />
+            <img 
+              src={sourceImageUrl} 
+              alt="Source preview" 
+              className="relative w-full h-auto max-h-80 object-contain" 
+            />
             <button
               onClick={onReset}
-              className="absolute top-2 right-2 p-1.5 bg-gray-900/70 rounded-full text-gray-300 hover:text-white hover:bg-red-600/80 transition-all duration-200 opacity-0 group-hover:opacity-100"
+              className="absolute top-2 right-2 p-1.5 bg-gray-900/70 rounded-full text-gray-300 hover:text-white hover:bg-red-600/80 transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
               aria-label="Remove image"
             >
               <XCircleIcon className="w-6 h-6" />

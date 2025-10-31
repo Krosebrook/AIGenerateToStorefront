@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { XCircleIcon } from './icons/XCircleIcon';
 import { ShopifyProductDetails } from '../App';
@@ -19,14 +20,14 @@ const PUSH_MESSAGES = [
     'Success! Product draft created.'
 ];
 
-const MarketingCopyDisplay: React.FC<{title: string; content: string; onCopy: () => void;}> = ({ title, content, onCopy }) => (
+const MarketingCopyDisplay: React.FC<{title: string; content: string; onCopy: () => void; rows?: number}> = ({ title, content, onCopy, rows = 3 }) => (
     <div className="relative">
         <label className="block mb-1 text-xs font-medium text-gray-400">{title}</label>
         <div className="relative">
             <textarea
                 readOnly
                 value={content}
-                rows={3}
+                rows={rows}
                 className="block p-2.5 w-full text-sm text-gray-200 bg-gray-900/70 rounded-lg border border-gray-600 resize-none"
             />
             <button onClick={onCopy} className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-white bg-gray-700 rounded-md transition">
@@ -84,6 +85,8 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
 
 
   if (!isOpen) return null;
+  
+  const formattedHashtags = details.hashtags.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ');
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -146,17 +149,12 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
                 
                 {isLoading && details.hashtags.length === 0 && <div className="w-full h-12 bg-gray-700/50 rounded-lg animate-pulse"></div>}
                 {details.hashtags.length > 0 && (
-                    <div className="relative">
-                        <label className="block mb-1 text-xs font-medium text-gray-400">Hashtags</label>
-                        <div className="relative">
-                            <div className="p-2.5 w-full text-sm text-gray-200 bg-gray-900/70 rounded-lg border border-gray-600">
-                                {details.hashtags.join(' ')}
-                            </div>
-                             <button onClick={() => handleCopy(details.hashtags.join(' '), 'tags')} className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-white bg-gray-700 rounded-md transition">
-                                <ClipboardIcon className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
+                    <MarketingCopyDisplay
+                        title="Hashtags"
+                        content={formattedHashtags}
+                        onCopy={() => handleCopy(formattedHashtags, 'tags')}
+                        rows={1}
+                    />
                 )}
             </div>
 
