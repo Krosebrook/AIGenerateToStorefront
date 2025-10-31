@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { UploadIcon } from './icons/UploadIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
 import { fileToBase64 } from '../utils/fileUtils';
@@ -13,9 +13,54 @@ interface BrandKitPanelProps {
     onUpdateBrandKit: (newKit: BrandKit) => void;
 }
 
+// --- Color Conversion Utilities ---
+
+function hsvToHex(h: number, s: number, v: number): string {
+  s /= 100;
+  v /= 100;
+  const f = (n: number, k = (n + h / 60) % 6) => v - v * s * Math.max(Math.min(k, 4 - k, 1), 0);
+  const rgbToHex = (r: number, g: number, b: number) => "#" + [r, g, b].map(x => Math.round(x * 255).toString(16).padStart(2, '0')).join('');
+  return rgbToHex(f(5), f(3), f(1)).toUpperCase();
+}
+
+function hexToHsv(hex: string): { h: number, s: number, v: number } | null {
+    let r = 0, g = 0, b = 0;
+    if (hex.length === 4) {
+        r = parseInt(hex[1] + hex[1], 16);
+        g = parseInt(hex[2] + hex[2], 16);
+        b = parseInt(hex[3] + hex[3], 16);
+    } else if (hex.length === 7) {
+        r = parseInt(hex.substring(1, 3), 16);
+        g = parseInt(hex.substring(3, 5), 16);
+        b = parseInt(hex.substring(5, 7), 16);
+    } else {
+        return null;
+    }
+
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, v = max;
+
+    const d = max - min;
+    s = max === 0 ? 0 : d / max;
+
+    if (max !== min) {
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    return { h: h * 360, s: s * 100, v: v * 100 };
+}
+
+
 export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdateBrandKit }) => {
-    const [newColor, setNewColor] = useState('#FFFFFF');
-    const colorInputRef = useRef<HTMLInputElement>(null);
+    const [isPickerVisible, setIsPickerVisible] = useState(false);
+    const [currentColor, setCurrentColor] = useState({ h: 260, s: 80, v: 90 });
+    const pickerRef = useRef<HTMLDivElement>(null);
+    const currentHex = hsvToHex(currentColor.h, currentColor.s, currentColor.v);
 
     const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -33,18 +78,47 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
     };
 
     const handleAddColor = () => {
-        const colorToAdd = newColor.toUpperCase();
-        if (colorToAdd && !brandKit.colors.includes(colorToAdd) && brandKit.colors.length < 8) {
-            onUpdateBrandKit({ ...brandKit, colors: [...brandKit.colors, colorToAdd] });
+        if (currentHex && !brandKit.colors.includes(currentHex) && brandKit.colors.length < 8) {
+            onUpdateBrandKit({ ...brandKit, colors: [...brandKit.colors, currentHex] });
         }
     };
     
-    const handleColorInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-        setNewColor(e.target.value);
+    const handleHexInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const hex = e.target.value.toUpperCase();
+        if (/^#([0-9A-F]{3}){1,2}$/i.test(hex)) {
+            const hsv = hexToHsv(hex);
+            if (hsv) {
+                setCurrentColor(hsv);
+            }
+        }
     };
 
     const handleRemoveColor = (colorToRemove: string) => {
         onUpdateBrandKit({ ...brandKit, colors: brandKit.colors.filter(c => c !== colorToRemove) });
+    };
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+                setIsPickerVisible(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleSVPlaneMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (e.buttons !== 1) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+
+        const s = (x / rect.width) * 100;
+        const v = 100 - (y / rect.height) * 100;
+
+        setCurrentColor(prev => ({ ...prev, s, v }));
     };
 
     return (
@@ -73,27 +147,62 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
             <div>
                 <label className="block mb-2 text-sm font-medium text-gray-300">Brand Colors</label>
                 <div className="flex items-center gap-2 mb-2">
-                    <div className="relative w-10 h-10 rounded-md overflow-hidden border-2 border-gray-500">
-                        <input
-                            ref={colorInputRef}
-                            type="color"
-                            value={newColor}
-                            onChange={handleColorInputChange}
-                            className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer"
+                    <div className="relative" ref={pickerRef}>
+                        <button
+                            onClick={() => setIsPickerVisible(!isPickerVisible)}
+                            className="w-10 h-10 rounded-md border-2 border-gray-500"
+                            style={{ backgroundColor: currentHex }}
+                            aria-label="Open color picker"
                         />
+                        {isPickerVisible && (
+                            <div className="absolute top-full mt-2 z-20 w-64 bg-gray-700 rounded-lg shadow-lg p-4 border border-gray-600">
+                                <div
+                                    onMouseDown={handleSVPlaneMove}
+                                    onMouseMove={handleSVPlaneMove}
+                                    className="relative h-40 w-full rounded-md cursor-crosshair"
+                                    style={{
+                                        backgroundColor: `hsl(${currentColor.h}, 100%, 50%)`,
+                                        backgroundImage: 'linear-gradient(to right, white, transparent), linear-gradient(to top, black, transparent)'
+                                    }}
+                                >
+                                    <div
+                                        className="absolute w-3 h-3 rounded-full border-2 border-white shadow-md pointer-events-none"
+                                        style={{
+                                            left: `${currentColor.s}%`,
+                                            top: `${100 - currentColor.v}%`,
+                                            transform: 'translate(-50%, -50%)',
+                                        }}
+                                    />
+                                </div>
+                                <div className="mt-4">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="360"
+                                        value={currentColor.h}
+                                        onChange={(e) => setCurrentColor(prev => ({ ...prev, h: Number(e.target.value) }))}
+                                        className="w-full h-2 bg-transparent rounded-lg appearance-none cursor-pointer hue-slider"
+                                        style={{ background: 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }}
+                                    />
+                                </div>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-md" style={{ backgroundColor: currentHex }}></div>
+                                    <input
+                                        type="text"
+                                        value={currentHex}
+                                        onChange={handleHexInputChange}
+                                        className="flex-grow p-2 text-sm text-center bg-gray-800 border border-gray-600 rounded-md uppercase"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <input 
-                        type="text"
-                        value={newColor}
-                        onChange={handleColorInputChange}
-                        className="w-24 p-2 text-sm text-center bg-gray-700 border border-gray-600 rounded-md"
-                    />
-                    <button onClick={handleAddColor} className="px-3 py-2 text-sm font-semibold bg-purple-600 rounded-md hover:bg-purple-700 transition-colors">Add</button>
+                    <button onClick={handleAddColor} className="px-4 py-2 text-sm font-semibold bg-purple-600 rounded-md hover:bg-purple-700 transition-colors h-10">Add</button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
                     {brandKit.colors.map(color => (
                         <div key={color} className="relative group flex items-center gap-2 p-1 pr-2 bg-gray-700 border border-gray-600 rounded-full">
-                            <div className="w-5 h-5 rounded-full" style={{ backgroundColor: color }}></div>
+                            <div className="w-5 h-5 rounded-full border border-black/20" style={{ backgroundColor: color }}></div>
                             <span className="text-xs font-mono">{color}</span>
                              <button
                                 onClick={() => handleRemoveColor(color)}

@@ -59,8 +59,49 @@ const MERCH_PRESETS: MerchPreset[] = [
     { id: 'hat', name: 'Hat', template: 'Create a photorealistic mockup of this design embroidered on the front of a classic black baseball cap. The cap should be shown from a slight front-angle view on a clean, neutral background to emphasize the design.' },
     { id: 'notebook', name: 'Notebook', template: 'Generate a mockup of this design on the cover of a spiral-bound notebook. The notebook should be lying on a wooden desk next to a pen, with soft, natural lighting.' },
     { id: 'tote-bag', name: 'Tote Bag', template: 'Create a photorealistic mockup of this design on a simple, minimalist canvas tote bag. The bag should be held by a person against a clean, light-colored wall, showcasing the design in a natural, lifestyle context.' },
-    { id: 'coloring-book', name: 'Adult Coloring Book', template: 'Convert this image into a detailed, black-and-white line art page for an adult coloring book. The final image should be presented as a crisp page in an open coloring book, with colored pencils resting nearby.' }
+    { id: 'coloring-book', name: 'Adult Coloring Book', template: 'Convert this image into a detailed, black-and-white line art page for an adult coloring book. The final image should be presented as a crisp page in an open coloring book, with colored pencils resting nearby.' },
+    { id: 'tank-top-model', name: 'Tank Top (Model)', template: "Photorealistic mockup of this design on a heather grey tri-blend tank top worn by a person with an athletic build, standing against a sunlit brick wall." },
+    { id: 'baby-onesie', name: 'Baby Onesie', template: "Create a cute, photorealistic mockup of this design on a soft, white cotton baby onesie, laid flat on a fluffy, pastel-colored blanket next to a wooden rattle." },
+    { id: 'socks', name: 'Socks', template: "Generate a mockup of this design patterned on a pair of premium crew socks. One sock should be worn on a foot, the other laid flat, on a clean white background." },
+    { id: 'sweatshirt-lifestyle', name: 'Sweatshirt (Lifestyle)', template: "Display this design on an oversized, cozy fleece sweatshirt. The mockup should show someone wearing it while sitting on a comfy couch, holding a warm drink, creating a relaxed, lifestyle vibe." },
+    { id: 'leggings', name: 'Leggings', template: "Create a mockup of this design as an all-over print on a pair of high-quality yoga leggings. Show them on a mannequin or a person in a simple yoga pose in a bright, airy studio." },
+    { id: 'beanie', name: 'Beanie', template: "A photorealistic mockup of this design embroidered on a folded, charcoal-colored knit beanie. The beanie should be resting on a rustic wooden surface next to a pair of gloves." },
+    { id: 't-shirt-hanging', name: 'T-Shirt (Hanging)', template: "Display this design on a black t-shirt hanging from a stylish wooden hanger against a clean, white wall. The fabric should show realistic folds and shadows." },
+    { id: 'denim-jacket-patch', name: 'Denim Jacket Patch', template: "Generate a mockup of this design as a custom embroidered patch stitched onto the back of a vintage, slightly worn denim jacket." },
+    { id: 'backpack', name: 'Backpack', template: "Render this design on the main pocket of a modern, canvas backpack. The backpack should be standing upright on a polished concrete floor, with soft, directional lighting." },
+    { id: 'enamel-pin', name: 'Enamel Pin', template: "Create a mockup of this design as a hard enamel pin with gold metal plating. The pin should be shown fastened to the lapel of a jacket, with a shallow depth of field." },
+    { id: 'water-bottle', name: 'Water Bottle', template: "A photorealistic mockup of this design printed on a matte-finish stainless steel water bottle. The bottle should have condensation droplets and be placed on a yoga mat next to a window." },
+    { id: 'laptop-sleeve', name: 'Laptop Sleeve', template: "Generate a mockup of this design on a neoprene laptop sleeve. The sleeve should be on a minimalist wooden desk next to a laptop and a cup of coffee." },
+    { id: 'phone-grip', name: 'Phone Grip', template: "Display this design on a circular phone grip attached to the back of a smartphone. The phone is being held by a hand, showing how the grip is used." },
+    { id: 'keychain', name: 'Keychain', template: "Create a mockup of this design on a durable acrylic keychain with a metal ring. The keychain should be hanging from a set of keys, casting a slight shadow on a neutral surface." },
+    { id: 'bandana', name: 'Bandana', template: "Generate a mockup of this design as a seamless pattern on a folded cotton bandana, laid flat on a textured background with a rustic feel." },
+    { id: 'face-mask', name: 'Face Mask', template: "Display this design on a reusable cloth face mask. The mockup should show the mask on a mannequin head to display its fit and form realistically." },
+    { id: 'throw-pillow', name: 'Throw Pillow', template: "Render this design on a square throw pillow with a realistic fabric texture. The pillow should be placed on a modern, comfortable armchair in a well-lit living room." },
+    { id: 'blanket', name: 'Blanket', template: "Generate a mockup of this design as an all-over print on a soft, plush fleece blanket. The blanket should be draped casually over the edge of a bed." },
+    { id: 'wall-tapestry', name: 'Wall Tapestry', template: "Create a large, photorealistic wall tapestry featuring this design, hanging on a bedroom wall above a bed with decorative pillows." },
+    { id: 'coasters', name: 'Coasters', template: "A mockup of this design on a set of four square ceramic coasters. The coasters are arranged neatly on a dark wooden table, with one having a glass of iced tea resting on it." },
+    { id: 'apron', name: 'Apron', template: "Display this design on the front of a canvas kitchen apron. The apron is hanging from a hook in a bright, modern kitchen setting." },
+    { id: 'beach-towel', name: 'Beach Towel', template: "Generate a photorealistic mockup of this design on a large, soft beach towel laid out on clean, white sand with the corner of a straw hat and sunglasses visible." },
+    { id: 'wall-clock', name: 'Wall Clock', template: "Create a mockup of this design on the face of a minimalist, circular wall clock with no numbers. The clock should be hanging on a subtly textured wall, with soft side lighting." },
+    { id: 'fridge-magnet', name: 'Fridge Magnet', template: "Render this design as a glossy, rectangular fridge magnet. The magnet should be shown on the door of a stainless steel refrigerator, holding up a small note." },
+    { id: 'greeting-card', name: 'Greeting Card', template: "Generate a mockup of this design on the front of a 5x7 inch greeting card, standing upright next to its envelope on a clean, light-colored surface." },
+    { id: 'skateboard-deck', name: 'Skateboard Deck', template: "Create a photorealistic mockup of this design as the graphic on the bottom of a skateboard deck. The deck should be leaning against a concrete wall in a skatepark." },
+    { id: 'mousepad', name: 'Mousepad', template: "Display this design on a rectangular mousepad with stitched edges. The mousepad is on a desk next to a keyboard and a gaming mouse." },
+    { id: 'jigsaw-puzzle', name: 'Jigsaw Puzzle', template: "Generate a mockup of this design as a completed 1000-piece jigsaw puzzle. A few puzzle pieces should be lying next to the finished puzzle on a wooden table." },
+    { id: 'instagram-post', name: 'Instagram Post', template: "Frame this image within an Instagram post mockup. Include the user interface with a generic profile picture, username, caption area, and engagement icons." },
+    { id: 'youtube-thumbnail', name: 'YouTube Thumbnail', template: "Create a YouTube thumbnail mockup using this design as the main visual element. Overlay a bold, catchy title in a large font (e.g., 'YOU WON\\'T BELIEVE THIS!') to simulate a real thumbnail." },
+    { id: 'vinyl-record-cover', name: 'Vinyl Record Cover', template: "Design a 12x12 inch vinyl record album cover with this artwork. The mockup should show the record sleeve partially pulled out, revealing the black vinyl disc." },
+    { id: 'gift-wrapping-paper', name: 'Gift Wrapping Paper', template: "Generate a repeating pattern of this design on a roll of gift wrapping paper. One part of the paper should be used to wrap a small box, tied with a ribbon." },
+    { id: 'coffee-bag', name: 'Coffee Bag', template: "Create a mockup of this design on the front of a matte black, stand-up coffee bag. The bag should be placed on a rustic counter with scattered coffee beans." },
+    { id: 'beer-can-label', name: 'Beer Can Label', template: "Generate a mockup of this design as a label on a 16oz craft beer can. The can should be photorealistic with condensation, placed on a bar counter." },
+    { id: 'temporary-tattoo', name: 'Temporary Tattoo', template: "Display this design as a temporary tattoo on someone's forearm. The lighting should be natural, and the skin texture should be visible for realism." },
+    { id: 'air-freshener', name: 'Car Air Freshener', template: "Render this design on a custom-shaped cardboard air freshener hanging from the rearview mirror of a car. The car's interior should be softly blurred in the background." },
+    { id: 'chocolate-wrapper', name: 'Chocolate Bar Wrapper', template: "Generate a photorealistic mockup of this design on the wrapper of an artisanal chocolate bar. The bar should be partially unwrapped to show the chocolate inside." },
+    { id: 'cereal-box', name: 'Cereal Box', template: "Create a mockup of this design on the front of a colorful, fun cereal box. The box should be on a kitchen table next to a bowl of cereal." },
+    { id: 'book-cover', name: 'Book Cover', template: "Display this design as the front cover of a paperback book. The book should be standing upright at a slight angle on a bookshelf among other books." },
+    { id: 'candle-label', name: 'Candle Label', template: "Generate a mockup of this design on a label for a glass jar candle. The candle should be lit, with a soft glow, and placed on a wooden surface in a cozy, dimly lit room." }
 ];
+
 
 const VARIATIONS_OPTIONS = [1, 2, 3, 4];
 const ASPECT_RATIO_OPTIONS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
@@ -219,7 +260,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
             {mode === 'edit' ? (
               <>
                  <button
@@ -264,16 +305,24 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                       </>
                     )}
                   </button>
+                  <button
+                    onClick={() => onGenerateBatch(selectedPresets)}
+                    disabled={!isImageUploaded || isLoading || selectedPresets.length === 0}
+                    className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-green-200 bg-green-900/50 rounded-lg hover:bg-green-800/50 focus:ring-4 focus:ring-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                  >
+                    <SparklesIcon className="w-4 h-4 mr-2" />
+                    Generate Mockups
+                  </button>
               </>
             ) : (
                <button
                 onClick={onFetchNews}
                 disabled={isLoading || isSuggesting || isFetchingNews}
-                className="w-full md:col-span-3 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-amber-200 bg-amber-900/50 rounded-lg hover:bg-amber-800/50 focus:ring-4 focus:ring-amber-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                className="w-full col-span-2 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-amber-200 bg-amber-900/50 rounded-lg hover:bg-amber-800/50 focus:ring-4 focus:ring-amber-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 {isFetchingNews ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     Fetching News...
                   </>
                 ) : (
@@ -315,9 +364,28 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   <summary className="p-3 cursor-pointer text-sm font-medium text-gray-300 list-none flex items-center justify-between hover:bg-gray-700/50 rounded-t-lg">
                       <span className='flex items-center gap-2'>
                         <PaintBrushIcon className="w-5 h-5 text-purple-400" />
-                        Brand Kit (Optional)
+                        Brand Kit
                       </span>
-                      <span className="transition-transform duration-200 group-open:rotate-90">▶</span>
+                      <div className="flex items-center gap-3" onClick={(e) => e.preventDefault()}>
+                          <label htmlFor="use-brand-kit" className="flex items-center cursor-pointer">
+                            <span className={`mr-2 text-xs font-semibold ${useBrandKit ? 'text-purple-300' : 'text-gray-400'}`}>
+                              {useBrandKit ? 'Enabled' : 'Disabled'}
+                            </span>
+                            <div className="relative">
+                              <input 
+                                id="use-brand-kit" 
+                                type="checkbox" 
+                                className="sr-only peer" 
+                                checked={useBrandKit} 
+                                onChange={(e) => setUseBrandKit(e.target.checked)} 
+                                disabled={isLoading || !isImageUploaded}
+                              />
+                              <div className="block w-10 h-6 rounded-full bg-gray-600 peer-checked:bg-purple-600 transition"></div>
+                              <div className="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></div>
+                            </div>
+                          </label>
+                          <span className="transition-transform duration-200 group-open:rotate-90 text-gray-400">▶</span>
+                      </div>
                   </summary>
                   <div className="p-4 border-t border-gray-700">
                       <BrandKitPanel brandKit={brandKit} onUpdateBrandKit={onUpdateBrandKit} />
@@ -380,28 +448,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </>
             )}
         </div>
-
-         {mode === 'edit' && (
-           <div className="flex items-center justify-start bg-gray-700/50 p-3 rounded-lg">
-              <label htmlFor="use-brand-kit" className="flex items-center cursor-pointer">
-                <div className="relative">
-                  <input 
-                    id="use-brand-kit" 
-                    type="checkbox" 
-                    className="sr-only" 
-                    checked={useBrandKit} 
-                    onChange={(e) => setUseBrandKit(e.target.checked)} 
-                    disabled={isLoading || !isImageUploaded}
-                  />
-                  <div className={`block w-10 h-6 rounded-full transition ${useBrandKit ? 'bg-purple-600' : 'bg-gray-600'}`}></div>
-                  <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${useBrandKit ? 'transform translate-x-4' : ''}`}></div>
-                </div>
-                <div className="ml-3 text-sm font-medium text-gray-300">
-                  Apply Brand Kit
-                </div>
-              </label>
-            </div>
-         )}
 
         <div className="flex flex-col sm:flex-row gap-4 mt-auto pt-4">
           <button
