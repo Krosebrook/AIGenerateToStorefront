@@ -84,6 +84,10 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
         return () => clearInterval(intervalId);
     }, []);
 
+    const progressPercentage = loadingProgress 
+        ? (loadingProgress.current / loadingProgress.total) * 100
+        : 0;
+
     const progressText = loadingProgress 
         ? `Generating mockup ${loadingProgress.current} of ${loadingProgress.total}...`
         : "Generating Your Image";
@@ -98,11 +102,11 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
             </p>
             <div className="w-full max-w-xs mt-8 bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
                 <div 
-                    className="bg-purple-600 h-2.5 rounded-full animate-progress-stripes"
+                    className="bg-purple-600 h-2.5 rounded-full animate-progress-stripes transition-all duration-300 ease-linear"
                     style={{
                         backgroundImage: 'linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent)',
                         backgroundSize: '1rem 1rem',
-                        width: '100%'
+                        width: `${progressPercentage}%`
                     }}
                 />
             </div>
