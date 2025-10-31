@@ -20,8 +20,6 @@ export interface MerchPreset {
 
 interface ControlPanelProps {
   mode: AppMode;
-  prompt: string;
-  setPrompt: (prompt: string) => void;
   onGenerateEdit: () => void;
   onGenerateNew: () => void;
   onGenerateBatch: (presets: MerchPreset[]) => void;
@@ -47,6 +45,7 @@ interface ControlPanelProps {
   onUpdateCustomPresets: (presets: MerchPreset[]) => void;
   onFetchNews: () => void;
   isFetchingNews: boolean;
+  loadingProgress: { current: number, total: number, message: string } | null;
 }
 
 const CATEGORIZED_PRESETS: Record<string, MerchPreset[]> = {
@@ -54,6 +53,7 @@ const CATEGORIZED_PRESETS: Record<string, MerchPreset[]> = {
         { id: 't-shirt', name: 'T-Shirt', template: 'Create a photorealistic mockup of this design on the chest of a premium, soft cotton white t-shirt. The t-shirt should be laid flat on a clean, light gray surface with subtle, natural shadows.' },
         { id: 't-shirt-hanging', name: 'T-Shirt (Hanging)', template: "Display this design on a black t-shirt hanging from a stylish wooden hanger against a clean, white wall. The fabric should show realistic folds and shadows." },
         { id: 't-shirt-vintage', name: 'Vintage Tee', template: "Create a photorealistic mockup of this design on a faded, vintage-style black t-shirt with a slightly distressed look. The t-shirt should be worn by a person leaning against a graffiti-covered brick wall in an urban alleyway, with moody, cinematic lighting." },
+        { id: 't-shirt-vintage-urban', name: 'Vintage Tee (Urban)', template: "Create a photorealistic mockup of this design on a vintage style T-shirt with a distressed look. The t-shirt is worn by a person leaning against a graffiti-covered brick wall in an urban alleyway, with moody, cinematic lighting." },
         { id: 't-shirt-athletic', name: 'Athletic Tee', template: "Generate a mockup of this design on a moisture-wicking, athletic performance t-shirt in a charcoal gray color. The shirt should be worn by a person mid-workout in a modern gym, with soft-focus gym equipment in the background." },
         { id: 't-shirt-vneck', name: 'V-Neck Tee (Lifestyle)', template: "Display this design on a stylish, dark navy blue V-neck t-shirt. The mockup should feature a person wearing it at an outdoor cafe, with a shallow depth of field blurring the background street scene." },
         { id: 't-shirt-tiedye', name: 'Tie-Dye Tee', template: "Create a vibrant, photorealistic mockup of this design centered on a brightly colored spiral tie-dye t-shirt. The t-shirt should be laid flat on a clean, sun-bleached wooden deck, capturing a fun, summery festival vibe." },
@@ -121,15 +121,14 @@ const CATEGORIZED_PRESETS: Record<string, MerchPreset[]> = {
     ]
 };
 
-const MERCH_PRESETS: MerchPreset[] = Object.values(CATEGORIZED_PRESETS).flat();
+const ALL_PRESETS: MerchPreset[] = Object.values(CATEGORIZED_PRESETS).flat();
+const POPULAR_PRESETS = ALL_PRESETS.slice(0, 12);
 const CATEGORIES = ['All', ...Object.keys(CATEGORIZED_PRESETS), 'Custom'];
 const VARIATIONS_OPTIONS = [1, 2, 3, 4];
 const ASPECT_RATIO_OPTIONS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   mode,
-  prompt,
-  setPrompt,
   onGenerateEdit,
   onGenerateNew,
   onGenerateBatch,
@@ -155,23 +154,30 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onUpdateCustomPresets,
   onFetchNews,
   isFetchingNews,
+  loadingProgress,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [isGridExpanded, setIsGridExpanded] = useState(false);
+
+  const prompt = ''; // This component no longer manages the prompt
+  const setPrompt = (p:string) => {}; // Placeholder
 
   const canSubmit = mode === 'edit' 
     ? isImageUploaded && (selectedPresets.length > 0 || prompt.trim() !== '') && !isLoading
     : prompt.trim() !== '' && !isLoading;
   
-  const displayedPresets = useMemo(() => {
+  const allCategorizedPresets = useMemo(() => {
     if (activeCategory === 'All') {
-        return [...MERCH_PRESETS, ...customPresets];
+        return [...ALL_PRESETS, ...customPresets];
     }
     if (activeCategory === 'Custom') {
         return customPresets;
     }
     return CATEGORIZED_PRESETS[activeCategory] || [];
   }, [activeCategory, customPresets]);
+
+  const displayedPresets = isGridExpanded ? allCategorizedPresets : POPULAR_PRESETS;
 
   const handlePresetClick = (preset: MerchPreset) => {
     const isCurrentlySelected = selectedPresets.some(p => p.id === preset.id);
@@ -187,7 +193,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   const handleStarterPack = () => {
     if (isLoading || !isImageUploaded) return;
     const starterPackIds = ['t-shirt', 'mug', 'hoodie'];
-    const starterPackPresets = MERCH_PRESETS.filter(p => starterPackIds.includes(p.id));
+    const starterPackPresets = ALL_PRESETS.filter(p => starterPackIds.includes(p.id));
     onGenerateBatch(starterPackPresets);
   };
 
@@ -199,23 +205,19 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       onGenerateNew();
     }
   }
-  
-  useEffect(() => {
-    if (mode === 'edit') {
-      if (selectedPresets.length === 1) {
-        setPrompt(selectedPresets[0].template);
-      } else {
-        setPrompt('');
-      }
-    }
-  }, [selectedPresets, mode, setPrompt]);
 
   const getGenerateButtonText = () => {
+    if (isLoading && loadingProgress) {
+        return loadingProgress.message;
+    }
+    if (isLoading) {
+        return 'Generating...'
+    }
     if (mode === 'generate') {
       return variations > 1 ? `Generate ${variations} Variations` : 'Generate Image';
     }
-    if (selectedPresets.length > 1) return `Generate ${selectedPresets.length} Mockups`;
-    return 'Generate';
+    if (selectedPresets.length > 0) return `Generate ${selectedPresets.length} Mockups`;
+    return 'Generate Edit';
   };
   
   const handleSaveCustomPreset = (newPreset: { name: string; template: string }) => {
@@ -234,21 +236,45 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     onUpdateCustomPresets(updatedPresets);
   };
 
+  const handleSuggestionClick = (suggestionName: string) => {
+    const suggestedPreset = ALL_PRESETS.find(p => p.name.toLowerCase() === suggestionName.toLowerCase());
+    if (suggestedPreset) {
+      handlePresetClick(suggestedPreset);
+    }
+  };
 
   return (
     <>
       <div className="bg-gray-800/50 p-6 rounded-2xl shadow-md border border-gray-700 flex flex-col gap-4 h-full">
         <h2 className="text-lg font-semibold text-gray-200">
-          {mode === 'edit' ? '2. Describe Your Mockup or Edit' : '1. Describe The Image You Want'}
+          {mode === 'edit' ? '3. Choose Products & Options' : '2. Configure & Generate'}
         </h2>
         
         {mode === 'edit' && (
           <>
+            {suggestions.length > 0 && (
+                <div className="p-3 bg-gray-900/40 rounded-lg border border-cyan-500/50">
+                    <h3 className="text-sm font-semibold text-cyan-300 mb-2 flex items-center gap-2">
+                        <LightbulbIcon className="w-4 h-4" />
+                        AI Suggests
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {suggestions.map(s => (
+                             <button
+                              key={s}
+                              onClick={() => handleSuggestionClick(s)}
+                              className="px-3 py-1 text-xs font-semibold rounded-full transition-colors duration-200 bg-cyan-800/70 text-cyan-200 hover:bg-cyan-700"
+                            >
+                              {s}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
             <div className="flex flex-col gap-3">
               <label className="block text-sm font-medium text-gray-300">
-                Start with a product (select one or more)
+                Product Presets (select one or more)
               </label>
-
               <div className="flex items-center gap-2 pb-2 -mx-2 px-2 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                   {CATEGORIES.map(category => {
                       if (category === 'Custom' && customPresets.length === 0) return null;
@@ -257,7 +283,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                           <button
                               key={category}
                               onClick={() => setActiveCategory(category)}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors duration-200 whitespace-nowrap
+                              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors duration-200 whitespace-nowrap
                                   ${isActive ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}
                               `}
                           >
@@ -270,7 +296,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {displayedPresets.map((preset) => {
                       const isSelected = selectedPresets.some(p => p.id === preset.id);
-                      const isSuggested = suggestions.map(s => s.toLowerCase()).includes(preset.name.toLowerCase());
                       return (
                         <div key={preset.id} className="relative group">
                           <button
@@ -278,7 +303,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                               disabled={!isImageUploaded || isLoading}
                               className={`w-full h-full p-2 text-xs font-semibold text-center rounded-md transition-all duration-200 border-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95
                                   ${isSelected ? 'bg-purple-600 border-purple-400 text-white active:bg-purple-700' : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-purple-500 hover:bg-gray-600 hover:scale-105 active:bg-purple-500'}
-                                  ${isSuggested && !isSelected ? 'ring-2 ring-offset-2 ring-offset-gray-800 ring-cyan-400' : ''}
                                   ${preset.isCustom ? 'border-dashed' : ''}
                               `}
                           >
@@ -296,21 +320,31 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         </div>
                       )
                   })}
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    disabled={!isImageUploaded || isLoading}
-                    className="p-2 flex flex-col items-center justify-center text-xs font-semibold text-center rounded-md transition-all duration-200 border-2 border-dashed bg-gray-700/50 border-gray-600 text-gray-400 hover:border-purple-500 hover:text-white hover:bg-gray-700 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-                    >
-                    <PlusCircleIcon className="w-5 h-5 mb-1" />
-                    Create New
-                </button>
+                  {activeCategory === 'All' && !isGridExpanded && (
+                     <button
+                        onClick={() => setIsGridExpanded(true)}
+                        className="p-2 flex flex-col items-center justify-center text-xs font-semibold text-center rounded-md transition-all duration-200 border-2 border-dashed bg-gray-700/50 border-gray-600 text-gray-400 hover:border-purple-500 hover:text-white hover:bg-gray-700 hover:scale-105"
+                        >
+                        View All {ALL_PRESETS.length}+
+                    </button>
+                  )}
+                  {activeCategory !== 'Custom' && (
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        disabled={!isImageUploaded || isLoading}
+                        className="p-2 flex flex-col items-center justify-center text-xs font-semibold text-center rounded-md transition-all duration-200 border-2 border-dashed bg-gray-700/50 border-gray-600 text-gray-400 hover:border-purple-500 hover:text-white hover:bg-gray-700 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                        >
+                        <PlusCircleIcon className="w-5 h-5 mb-1" />
+                        Create New
+                    </button>
+                  )}
               </div>
             </div>
           </>
         )}
         
         <div className="grid grid-cols-2 gap-2">
-            {mode === 'edit' ? (
+            {mode === 'edit' && (
               <>
                  <button
                     onClick={handleStarterPack}
@@ -326,84 +360,24 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-cyan-200 bg-cyan-900/50 rounded-lg hover:bg-cyan-800/50 focus:ring-4 focus:ring-cyan-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
                   >
                     {isSuggesting ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Suggesting...
-                      </>
+                      <><svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Suggesting...</>
                     ) : (
-                      <>
-                        <LightbulbIcon className="w-4 h-4 mr-2" />
-                        Smart Suggest
-                      </>
+                      <><LightbulbIcon className="w-4 h-4 mr-2" />Smart Suggest</>
                     )}
-                  </button>
-                   <button
-                    onClick={onFetchNews}
-                    disabled={isLoading || isSuggesting || isFetchingNews}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-amber-200 bg-amber-900/50 rounded-lg hover:bg-amber-800/50 focus:ring-4 focus:ring-amber-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
-                  >
-                    {isFetchingNews ? (
-                      <>
-                      <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        Fetching News...
-                      </>
-                    ) : (
-                      <>
-                        <NewspaperIcon className="w-4 h-4 mr-2" />
-                        Fetch Latest News
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => onGenerateBatch(selectedPresets)}
-                    disabled={!isImageUploaded || isLoading || selectedPresets.length === 0}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-green-200 bg-green-900/50 rounded-lg hover:bg-green-800/50 focus:ring-4 focus:ring-green-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
-                  >
-                    <SparklesIcon className="w-4 h-4 mr-2" />
-                    Generate Mockups
                   </button>
               </>
-            ) : (
-               <button
+            )}
+             <button
                 onClick={onFetchNews}
                 disabled={isLoading || isSuggesting || isFetchingNews}
                 className="w-full col-span-2 inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-center text-amber-200 bg-amber-900/50 rounded-lg hover:bg-amber-800/50 focus:ring-4 focus:ring-amber-700 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 {isFetchingNews ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    Fetching News...
-                  </>
+                  <><svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Fetching News...</>
                 ) : (
-                  <>
-                    <NewspaperIcon className="w-4 h-4 mr-2" />
-                    Fetch Latest News
-                  </>
+                  <><NewspaperIcon className="w-4 h-4 mr-2" />Fetch Latest News</>
                 )}
               </button>
-            )}
-        </div>
-
-
-        <div className="flex-grow flex flex-col mt-2">
-          <label htmlFor="prompt" className="block mb-2 text-sm font-medium text-gray-300">
-            {mode === 'edit' ? 'Custom Prompt' : 'Prompt'}
-          </label>
-          <textarea
-            id="prompt"
-            rows={mode === 'edit' ? 3 : 5}
-            className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition disabled:bg-gray-700/50"
-            placeholder={
-              mode === 'edit' 
-                ? selectedPresets.length > 1
-                  ? 'Using selected product templates...'
-                  : 'e.g., place this design on a tote bag made of canvas' 
-                : 'e.g., A cute cat astronaut floating in space, digital art'
-            }
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            disabled={(mode === 'edit' && (!isImageUploaded || selectedPresets.length > 1)) || isLoading}
-          />
         </div>
         
         <div className="border-t border-gray-700 pt-4 flex flex-col gap-4">
@@ -416,6 +390,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         Brand Kit
                       </span>
                       <div className="flex items-center gap-3" onClick={(e) => e.preventDefault()}>
+                          {useBrandKit && (
+                             <div className="flex items-center gap-2 bg-gray-800 px-2 py-1 rounded-md">
+                                {brandKit.logo && <img src={brandKit.logo} alt="logo" className="w-4 h-4 object-contain rounded-sm" />}
+                                {brandKit.colors.length > 0 && <div className="w-3 h-3 rounded-full" style={{backgroundColor: brandKit.colors[0]}}></div>}
+                                <span className="text-xs text-gray-400">Active</span>
+                             </div>
+                          )}
                           <label htmlFor="use-brand-kit" className="flex items-center cursor-pointer">
                             <span className={`mr-2 text-xs font-semibold ${useBrandKit ? 'text-purple-300' : 'text-gray-400'}`}>
                               {useBrandKit ? 'Enabled' : 'Disabled'}
@@ -501,7 +482,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <div className="flex flex-col sm:flex-row gap-4 mt-auto pt-4">
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit}
+            disabled={!canSubmit && !isLoading}
             className="flex-grow inline-flex items-center justify-center px-5 py-3 text-base font-medium text-center text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:ring-4 focus:ring-purple-300 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-200"
           >
             {isLoading ? (
@@ -510,7 +491,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Generating...
+                {getGenerateButtonText()}
               </>
             ) : (
               <>

@@ -34,6 +34,42 @@ const initialBrandKit: BrandKit = {
   colors: [],
 };
 
+const GenerateInputPanel: React.FC<{prompt: string, setPrompt: (p: string) => void, isLoading: boolean}> = ({ prompt, setPrompt, isLoading }) => (
+    <div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700">
+        <label htmlFor="generate-prompt" className="block text-lg font-semibold text-gray-200 mb-4">1. Describe Your Design</label>
+        <textarea
+            id="generate-prompt"
+            rows={8}
+            className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition disabled:opacity-70"
+            placeholder="e.g., A cute cat astronaut floating in space, digital art"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            disabled={isLoading}
+            aria-label="Design prompt"
+        />
+    </div>
+);
+
+const EditPromptPanel: React.FC<{prompt: string, setPrompt: (p: string) => void, isLoading: boolean, selectedPresets: MerchPreset[]}> = ({ prompt, setPrompt, isLoading, selectedPresets }) => (
+    <div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700">
+        <label htmlFor="edit-prompt" className="block text-lg font-semibold text-gray-200 mb-4">2. Custom Prompt</label>
+        <textarea
+            id="edit-prompt"
+            rows={3}
+            className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition disabled:opacity-50"
+            placeholder={
+              selectedPresets.length > 0
+                ? 'Using selected product templates. Clear selection to use a custom prompt.'
+                : 'e.g., place this design on a tote bag made of canvas'
+            }
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            disabled={isLoading || selectedPresets.length > 0}
+            aria-label="Custom edit prompt"
+        />
+    </div>
+);
+
 export default function App(): React.ReactElement {
   const [mode, setMode] = useState<AppMode>('edit');
   const [sourceImage, setSourceImage] = useState<File | null>(null);
@@ -51,7 +87,7 @@ export default function App(): React.ReactElement {
   const [isShopifyModalOpen, setIsShopifyModalOpen] = useState(false);
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [selectedPresets, setSelectedPresets] = useState<MerchPreset[]>([]);
-  const [loadingProgress, setLoadingProgress] = useState<{ current: number, total: number } | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState<{ current: number, total: number, message: string } | null>(null);
 
   const [brandKit, setBrandKit] = useState<BrandKit>(initialBrandKit);
   const [useBrandKit, setUseBrandKit] = useState<boolean>(false);
@@ -122,13 +158,15 @@ export default function App(): React.ReactElement {
 
     const base64Data = sourceImageUrl.split(',')[1];
     
-    setLoadingProgress({ current: 0, total: presetsToRun.length });
+    setLoadingProgress({ current: 0, total: presetsToRun.length, message: 'Initializing batch...' });
+    const results: GeneratedImage[] = [];
     for (let i = 0; i < presetsToRun.length; i++) {
       const preset = presetsToRun[i];
-      setLoadingProgress({ current: i + 1, total: presetsToRun.length });
+      setLoadingProgress({ current: i + 1, total: presetsToRun.length, message: `Applying "${preset.name}"...` });
       try {
         const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, preset.template, negativePrompt, useBrandKit ? brandKit : undefined);
-        setGeneratedImages(prev => [...prev, { name: preset.name, url: newImageUrl }]);
+        results.push({ name: preset.name, url: newImageUrl });
+        setGeneratedImages([...results]); // Update incrementally
       } catch (err) {
         console.error(`Failed to generate image for ${preset.name}:`, err);
         // Add a placeholder or error image if one fails? For now, we just skip.
@@ -154,7 +192,7 @@ export default function App(): React.ReactElement {
       setError(null);
       setGeneratedImages([]);
       setActiveResultIndex(0);
-      setLoadingProgress({ current: 1, total: 1 });
+      setLoadingProgress({ current: 1, total: 1, message: 'Applying your custom edit...' });
       const base64Data = sourceImageUrl.split(',')[1];
       try {
         const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, customPrompt, negativePrompt, useBrandKit ? brandKit : undefined);
@@ -182,10 +220,9 @@ export default function App(): React.ReactElement {
     setGeneratedImages([]);
     setSourceImage(null);
     setSourceImageUrl(null);
-    setLoadingProgress({ current: 1, total: variations });
+    setLoadingProgress({ current: 1, total: variations, message: 'Generating variations...' });
 
     try {
-      // NOTE: Brand Kit is not applied to 'generate' mode, only 'edit' mode.
       const newImageUrls = await generateImageFromPrompt(prompt, negativePrompt, variations, aspectRatio);
       
       if (!newImageUrls || newImageUrls.length === 0) {
@@ -300,19 +337,32 @@ export default function App(): React.ReactElement {
             <ModeSelector currentMode={mode} setMode={setMode} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
               <div className="flex flex-col gap-8">
-                {mode === 'edit' && (
-                  <ImageUploader 
-                    onImageUpload={handleImageUpload} 
-                    sourceImageUrl={sourceImageUrl} 
-                    onReset={handleReset}
-                  />
-                )}
+                <div key={mode} className="animate-fade-in flex flex-col gap-8">
+                  {mode === 'generate' ? (
+                      <GenerateInputPanel prompt={prompt} setPrompt={setPrompt} isLoading={isLoading} />
+                  ) : (
+                    <>
+                      <ImageUploader 
+                        onImageUpload={handleImageUpload} 
+                        sourceImageUrl={sourceImageUrl} 
+                        onReset={handleReset}
+                      />
+                      {sourceImageUrl && (
+                        <EditPromptPanel 
+                          prompt={prompt} 
+                          setPrompt={setPrompt} 
+                          isLoading={isLoading} 
+                          selectedPresets={selectedPresets}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
                 <ControlPanel
                   mode={mode}
-                  prompt={prompt}
-                  setPrompt={setPrompt}
                   onGenerateEdit={handleGenerateEdit}
                   onGenerateNew={handleGenerateFromPrompt}
+                  onGenerateBatch={handleGenerateBatch}
                   onReset={handleReset}
                   isLoading={isLoading}
                   isImageUploaded={!!sourceImage}
@@ -327,7 +377,6 @@ export default function App(): React.ReactElement {
                   setVariations={setVariations}
                   aspectRatio={aspectRatio}
                   setAspectRatio={setAspectRatio}
-                  onGenerateBatch={handleGenerateBatch}
                   brandKit={brandKit}
                   onUpdateBrandKit={handleUpdateBrandKit}
                   useBrandKit={useBrandKit}
@@ -336,6 +385,7 @@ export default function App(): React.ReactElement {
                   onUpdateCustomPresets={handleUpdateCustomPresets}
                   onFetchNews={handleFetchNews}
                   isFetchingNews={isFetchingNews}
+                  loadingProgress={loadingProgress}
                 />
               </div>
               <div className="flex flex-col">

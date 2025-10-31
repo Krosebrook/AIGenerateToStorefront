@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { UploadIcon } from './icons/UploadIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
@@ -57,18 +58,28 @@ function hexToHsv(hex: string): { h: number, s: number, v: number } | null {
 
 
 export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdateBrandKit }) => {
+    const [logoError, setLogoError] = useState<string | null>(null);
     const [isPickerVisible, setIsPickerVisible] = useState(false);
     const [currentColor, setCurrentColor] = useState({ h: 260, s: 80, v: 90 });
     const pickerRef = useRef<HTMLDivElement>(null);
     const currentHex = hsvToHex(currentColor.h, currentColor.s, currentColor.v);
 
     const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
+        setLogoError(null);
+        const file = e.target.files?.[0];
+
+        if (file) {
+            const MAX_SIZE_MB = 2;
+            if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+                setLogoError(`Logo must be under ${MAX_SIZE_MB}MB.`);
+                return;
+            }
             try {
-                const base64Logo = await fileToBase64(e.target.files[0]);
+                const base64Logo = await fileToBase64(file);
                 onUpdateBrandKit({ ...brandKit, logo: base64Logo });
             } catch (error) {
                 console.error("Failed to read logo file", error);
+                setLogoError("Could not read the logo file.");
             }
         }
     };
@@ -143,6 +154,7 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
                         <input type="file" className="hidden" accept="image/png, image/jpeg, image/webp" onChange={handleLogoUpload} />
                     </label>
                 )}
+                 {logoError && <p className="text-xs text-red-400 mt-2">{logoError}</p>}
             </div>
             <div>
                 <label className="block mb-2 text-sm font-medium text-gray-300">Brand Colors</label>

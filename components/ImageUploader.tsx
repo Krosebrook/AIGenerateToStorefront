@@ -1,6 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { UploadIcon } from './icons/UploadIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
+import { PaintBrushIcon } from './icons/PaintBrushIcon';
+import { StyleIcon } from './icons/StyleIcon';
+import { ExpandIcon } from './icons/ExpandIcon';
 
 interface ImageUploaderProps {
   onImageUpload: (file: File) => void;
@@ -8,8 +11,33 @@ interface ImageUploaderProps {
   onReset: () => void;
 }
 
+const ToolbarButton: React.FC<{label: string, onClick: () => void, children: React.ReactNode}> = ({ label, onClick, children }) => (
+    <button
+        onClick={onClick}
+        className="p-2 rounded-full text-gray-300 bg-gray-800/80 hover:bg-purple-600 hover:text-white transition-all duration-200"
+        aria-label={label}
+    >
+        {children}
+    </button>
+);
+
+const SubPanel: React.FC<{title: string, options: string[], onClose: () => void}> = ({ title, options, onClose }) => (
+    <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-48 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-3 animate-fade-in">
+        <div className="flex justify-between items-center mb-2">
+            <h4 className="text-xs font-bold text-white">{title}</h4>
+            <button onClick={onClose} className="text-gray-400 hover:text-white"><XCircleIcon className="w-4 h-4" /></button>
+        </div>
+        <div className="flex flex-col gap-1.5">
+            {options.map(opt => (
+                <button key={opt} className="w-full text-left text-xs text-gray-300 hover:bg-purple-500/50 p-1.5 rounded-md transition-colors">{opt}</button>
+            ))}
+        </div>
+    </div>
+);
+
 export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sourceImageUrl, onReset }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -59,6 +87,28 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
             >
               <XCircleIcon className="w-6 h-6" />
             </button>
+
+            {/* Contextual Toolbar */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/70 backdrop-blur-sm p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="relative">
+                    <ToolbarButton label="Edit with Brush" onClick={() => setActivePanel(activePanel === 'brush' ? null : 'brush')}>
+                        <PaintBrushIcon className="w-6 h-6" />
+                    </ToolbarButton>
+                    {activePanel === 'brush' && <SubPanel title="Brush Tools" options={['Remove Object', 'Replace Object', 'Recolor Area']} onClose={() => setActivePanel(null)} />}
+                </div>
+                <div className="relative">
+                    <ToolbarButton label="Apply Style" onClick={() => setActivePanel(activePanel === 'style' ? null : 'style')}>
+                        <StyleIcon className="w-6 h-6" />
+                    </ToolbarButton>
+                    {activePanel === 'style' && <SubPanel title="Style Transfer" options={['Photorealistic', 'Vector Art', 'Vintage', 'Watercolor']} onClose={() => setActivePanel(null)} />}
+                </div>
+                 <div className="relative">
+                    <ToolbarButton label="Expand Image" onClick={() => setActivePanel(activePanel === 'expand' ? null : 'expand')}>
+                        <ExpandIcon className="w-6 h-6" />
+                    </ToolbarButton>
+                    {activePanel === 'expand' && <SubPanel title="Outpainting" options={['Expand 25%', 'Expand 50%', 'Fill Canvas']} onClose={() => setActivePanel(null)} />}
+                </div>
+            </div>
           </div>
         ) : (
           <label
