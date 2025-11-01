@@ -10,6 +10,7 @@ import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
 import { BrandKit } from './components/BrandKitPanel';
 import { NewsPanel } from './components/NewsPanel';
 import { MarketingDisplayPanel } from './components/MarketingDisplayPanel';
+import { Toast } from './components/Toast';
 
 export interface ShopifyProductDetails {
   title: string;
@@ -144,6 +145,7 @@ export default function App(): React.ReactElement {
       setSourceImageUrl(base64);
     } catch (err) {
       setError('Failed to read image file.');
+      console.error(err);
       setSourceImageUrl(null);
     }
   }, []);
@@ -165,6 +167,7 @@ export default function App(): React.ReactElement {
     
     setLoadingProgress({ current: 0, total: presetsToRun.length, message: 'Initializing batch...' });
     const results: GeneratedImage[] = [];
+    let batchError = false;
     for (let i = 0; i < presetsToRun.length; i++) {
       const preset = presetsToRun[i];
       setLoadingProgress({ current: i + 1, total: presetsToRun.length, message: `Applying "${preset.name}"...` });
@@ -173,9 +176,13 @@ export default function App(): React.ReactElement {
         results.push({ name: preset.name, url: newImageUrl });
         setGeneratedImages([...results]); // Update incrementally
       } catch (err) {
+        batchError = true;
         console.error(`Failed to generate image for ${preset.name}:`, err);
-        // Add a placeholder or error image if one fails? For now, we just skip.
       }
+    }
+    
+    if (batchError) {
+      setError('Some images in the batch failed to generate. Check console for details.');
     }
     
     setIsLoading(false);
@@ -203,9 +210,9 @@ export default function App(): React.ReactElement {
       try {
         const newImageUrl = await editImageWithPrompt(base64Data, sourceImage.type, customPrompt, negativePrompt, useBrandKit ? brandKit : undefined);
         setGeneratedImages([{ name: 'Custom Edit', url: newImageUrl }]);
-      } catch(err) {
+      } catch(err: any) {
         console.error(err);
-        setError('An error occurred during generation. Please try again.');
+        setError(err.message || 'An error occurred during generation. Please try again.');
       } finally {
         setIsLoading(false);
         setLoadingProgress(null);
@@ -249,9 +256,9 @@ export default function App(): React.ReactElement {
       setSourceImageUrl(firstImageUrl);
       setMode('edit');
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Failed to generate product package. Please try again.');
+      setError(err.message || 'Failed to generate product package. Please try again.');
     } finally {
       setIsLoading(false);
       setLoadingProgress(null);
@@ -291,9 +298,9 @@ export default function App(): React.ReactElement {
       const base64Data = sourceImageUrl.split(',')[1];
       const suggestions = await suggestProductsForImage(base64Data, sourceImage.type);
       setProductSuggestions(suggestions);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Could not get product suggestions.');
+      setError(err.message || 'Could not get product suggestions.');
     } finally {
       setIsSuggesting(false);
     }
@@ -306,15 +313,10 @@ export default function App(): React.ReactElement {
       const base64Data = activeImage.url.split(',')[1];
       const details = await generateProductDetails(base64Data, 'image/png', productName);
       return details;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to generate product details', err);
-      return { 
-        title: '', 
-        description: '',
-        socialMediaCaption: '',
-        adCopy: [],
-        hashtags: []
-      };
+      setError(err.message || 'Failed to generate product details.');
+      return null;
     }
   }, [generatedImages, activeResultIndex]);
 
@@ -327,9 +329,9 @@ export default function App(): React.ReactElement {
       const { articles, sources } = await fetchLatestNews();
       setNewsArticles(articles);
       setNewsSources(sources);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setNewsError('Could not fetch the latest news. Please try again.');
+      setNewsError(err.message || 'Could not fetch the latest news. Please try again.');
     } finally {
       setIsFetchingNews(false);
     }
@@ -340,6 +342,7 @@ export default function App(): React.ReactElement {
 
   return (
     <>
+      {error && <Toast message={error} onClose={() => setError(null)} />}
       <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col font-sans">
         <Header />
         <main className="flex-grow p-4 md:p-8">
@@ -402,7 +405,6 @@ export default function App(): React.ReactElement {
                  <ResultDisplay
                   generatedImages={generatedImages}
                   isLoading={isLoading}
-                  error={error}
                   onPushToShopify={() => setIsShopifyModalOpen(true)}
                   showShopifyButton={showShopifyButton}
                   activeResultIndex={activeResultIndex}

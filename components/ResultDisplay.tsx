@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { PhotoIcon } from './icons/PhotoIcon';
-import { ExclamationTriangleIcon } from './icons/ExclamationTriangleIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ShopifyIcon } from './icons/ShopifyIcon';
 import { GeneratedImage } from '../App';
 import { ChevronLeftIcon } from './icons/ChevronLeftIcon';
 import { ChevronRightIcon } from './icons/ChevronRightIcon';
+import { MagnifyingGlassPlusIcon } from './icons/MagnifyingGlassPlusIcon';
+import { MagnifyingGlassMinusIcon } from './icons/MagnifyingGlassMinusIcon';
+import { ArrowUturnLeftIcon } from './icons/ArrowUturnLeftIcon';
 
 
 interface ResultDisplayProps {
   generatedImages: GeneratedImage[];
   isLoading: boolean;
-  error: string | null;
   onPushToShopify: () => void;
   showShopifyButton: boolean;
   activeResultIndex: number;
@@ -24,6 +25,9 @@ const LOADING_MESSAGES = [
     "Warming up the AI's creativity...",
     "Analyzing your image and prompt...",
     "Mixing pixels and imagination...",
+    "Consulting with digital muses...",
+    "Translating ideas into visuals...",
+    "Painting with algorithms...",
     "Applying the finishing touches...",
     "Almost there, creating magic!"
 ];
@@ -32,7 +36,6 @@ const LOADING_MESSAGES = [
 export const ResultDisplay: React.FC<ResultDisplayProps> = ({ 
   generatedImages, 
   isLoading, 
-  error, 
   onPushToShopify, 
   showShopifyButton,
   activeResultIndex,
@@ -41,6 +44,57 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
 }) => {
   
   const currentImage = generatedImages[activeResultIndex];
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
+  const handleResetView = useCallback(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }, []);
+
+  useEffect(() => {
+    handleResetView();
+  }, [currentImage, handleResetView]);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only main button
+    e.preventDefault();
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+    if (imageContainerRef.current) {
+      imageContainerRef.current.style.cursor = 'grabbing';
+    }
+  }, [position.x, position.y]);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDraggingRef.current) return;
+    const newX = e.clientX - dragStartRef.current.x;
+    const newY = e.clientY - dragStartRef.current.y;
+    setPosition({ x: newX, y: newY });
+  }, []);
+
+  const onMouseUp = useCallback(() => {
+    isDraggingRef.current = false;
+    if (imageContainerRef.current) {
+      imageContainerRef.current.style.cursor = 'grab';
+    }
+  }, []);
+
+  const onWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const zoomIntensity = 0.1;
+    // deltaY is negative when scrolling up (zoom in), positive when scrolling down (zoom out)
+    const newScale = scale - e.deltaY * zoomIntensity * 0.05;
+    const clampedScale = Math.max(0.5, Math.min(newScale, 5));
+    setScale(clampedScale);
+  }, [scale]);
 
   const handleDownload = () => {
     if (currentImage) {
@@ -95,29 +149,50 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
     return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-800/50 rounded-2xl p-8 text-center relative overflow-hidden">
             <SparkleBackground />
-            <SparklesIcon className="w-12 h-12 text-purple-400 mb-4 animate-spin" style={{ animationDuration: '3s' }}/>
-            <h3 className="text-xl font-semibold text-gray-200">{progressText}</h3>
-            <p className={`text-gray-400 mt-2 h-5 transition-opacity duration-500 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
-                {message}
-            </p>
-            <div className="w-full max-w-xs mt-8 bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
-                <div 
-                    className="bg-purple-600 h-2.5 rounded-full animate-progress-stripes transition-all duration-300 ease-linear"
-                    style={{
-                        backgroundImage: 'linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent)',
-                        backgroundSize: '1rem 1rem',
-                        width: `${progressPercentage}%`
-                    }}
-                />
+            <div className="relative z-10 flex flex-col items-center justify-center">
+                <SparklesIcon className="w-12 h-12 text-purple-400 mb-4 animate-spin" style={{ animationDuration: '3s' }}/>
+                <h3 className="text-xl font-semibold text-gray-200">{progressText}</h3>
+                <p className={`text-gray-400 mt-2 h-5 transition-opacity duration-500 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
+                    {message}
+                </p>
+                <div className="w-full max-w-xs mt-8 bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                        className="bg-purple-600 h-2.5 rounded-full animate-progress-stripes transition-all duration-300 ease-linear"
+                        style={{
+                            backgroundImage: 'linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent)',
+                            backgroundSize: '1rem 1rem',
+                            width: `${progressPercentage}%`
+                        }}
+                    />
+                </div>
             </div>
         </div>
     );
   };
 
+  const Sparkle = ({ style }: { style: React.CSSProperties }) => (
+    <div 
+        className="absolute bg-white rounded-full"
+        style={{
+            ...style,
+            animation: `sparkle-anim ${Math.random() * 3 + 2}s ease-in-out infinite`,
+        }}
+    />
+  );
+
   const SparkleBackground = () => (
     <div className="absolute inset-0 overflow-hidden rounded-2xl">
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 rounded-full filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-cyan-500/20 rounded-full filter blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500 rounded-full filter blur-3xl animate-drift-1"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-cyan-500 rounded-full filter blur-3xl animate-drift-2"></div>
+        {Array.from({ length: 15 }).map((_, i) => (
+          <Sparkle key={i} style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              width: `${Math.random() * 2 + 1}px`,
+              height: `${Math.random() * 2 + 1}px`,
+              animationDelay: `${Math.random() * 4}s`,
+          }} />
+        ))}
     </div>
   );
   
@@ -129,23 +204,75 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
     </div>
   );
   
-  const ErrorState = () => (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-red-900/20 border border-red-500/50 rounded-2xl p-8 text-center">
-        <ExclamationTriangleIcon className="w-12 h-12 text-red-400 mb-4" />
-        <h3 className="text-xl font-semibold text-red-300">An Error Occurred</h3>
-        <p className="text-red-400 mt-2">{error}</p>
-      </div>
-  );
-
   return (
     <div className="w-full h-full min-h-[40rem] lg:min-h-0 bg-gray-800/30 rounded-2xl p-4 border border-gray-700/50 flex flex-col relative overflow-hidden">
         <div className="flex-grow flex items-center justify-center">
             {isLoading ? <LoadingPlaceholder /> :
-             error ? <ErrorState /> :
              generatedImages.length > 0 && currentImage ? (
                  <div className="w-full h-full flex flex-col">
-                     <div className="relative flex-grow w-full flex items-center justify-center">
-                         <img src={currentImage.url} alt={currentImage.name} className="max-w-full max-h-full object-contain rounded-lg" />
+                     <div 
+                        ref={imageContainerRef}
+                        className="relative flex-grow w-full flex items-center justify-center overflow-hidden cursor-grab"
+                        onMouseDown={onMouseDown}
+                        onMouseMove={onMouseMove}
+                        onMouseUp={onMouseUp}
+                        onMouseLeave={onMouseUp}
+                        onWheel={onWheel}
+                     >
+                         <img 
+                            src={currentImage.url} 
+                            alt={currentImage.name} 
+                            className="max-w-full max-h-full object-contain rounded-lg transition-transform duration-100"
+                            style={{ 
+                                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                                touchAction: 'none' // Essential for preventing default touch behaviors
+                            }}
+                         />
+                         
+                         {/* Zoom Controls */}
+                         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/70 backdrop-blur-sm p-2 rounded-full shadow-lg">
+                            <button onClick={() => setScale(s => Math.max(0.5, s - 0.2))} className="p-2 text-gray-300 hover:text-white hover:bg-purple-600 rounded-full transition-colors" aria-label="Zoom out">
+                                <MagnifyingGlassMinusIcon className="w-5 h-5" />
+                            </button>
+                            <input
+                                type="range"
+                                min="0.5"
+                                max="5"
+                                step="0.01"
+                                value={scale}
+                                onChange={(e) => setScale(parseFloat(e.target.value))}
+                                className="w-32 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer range-slider"
+                                aria-label="Zoom slider"
+                            />
+                            <style>
+                                {`
+                                    .range-slider::-webkit-slider-thumb {
+                                        -webkit-appearance: none;
+                                        appearance: none;
+                                        width: 16px;
+                                        height: 16px;
+                                        background: #a855f7;
+                                        cursor: pointer;
+                                        border-radius: 50%;
+                                    }
+                                    .range-slider::-moz-range-thumb {
+                                        width: 16px;
+                                        height: 16px;
+                                        background: #a855f7;
+                                        cursor: pointer;
+                                        border-radius: 50%;
+                                        border: none;
+                                    }
+                                `}
+                            </style>
+                             <button onClick={() => setScale(s => Math.min(5, s + 0.2))} className="p-2 text-gray-300 hover:text-white hover:bg-purple-600 rounded-full transition-colors" aria-label="Zoom in">
+                                <MagnifyingGlassPlusIcon className="w-5 h-5" />
+                            </button>
+                            <div className="w-px h-5 bg-gray-600 mx-1"></div>
+                             <button onClick={handleResetView} className="p-2 text-gray-300 hover:text-white hover:bg-purple-600 rounded-full transition-colors" aria-label="Reset view">
+                                <ArrowUturnLeftIcon className="w-5 h-5" />
+                            </button>
+                         </div>
                          
                          {/* Carousel controls */}
                          {generatedImages.length > 1 && (

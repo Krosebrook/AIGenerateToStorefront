@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { XCircleIcon } from './icons/XCircleIcon';
 import { ShopifyProductDetails } from '../App';
+import { PlusCircleIcon } from './icons/PlusCircleIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
 
 interface ShopifyModalProps {
@@ -20,43 +21,25 @@ const PUSH_MESSAGES = [
     'Success! Product draft created.'
 ];
 
-const MarketingCopyDisplay: React.FC<{title: string; content: string; onCopy: () => void; rows?: number}> = ({ title, content, onCopy, rows = 3 }) => (
-    <div className="relative">
-        <label className="block mb-1 text-xs font-medium text-gray-400">{title}</label>
-        <div className="relative">
-            <textarea
-                readOnly
-                value={content}
-                rows={rows}
-                className="block p-2.5 w-full text-sm text-gray-200 bg-gray-900/70 rounded-lg border border-gray-600 resize-none"
-            />
-            <button onClick={onCopy} className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-white bg-gray-700 rounded-md transition">
-                <ClipboardIcon className="w-4 h-4" />
-            </button>
-        </div>
-    </div>
-);
-
 
 export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, imageUrl, productName, onGetProductDetails, initialDetails }) => {
   const [details, setDetails] = useState<ShopifyProductDetails>({ title: '', description: '', socialMediaCaption: '', adCopy: [], hashtags: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [pushStep, setPushStep] = useState(0);
   const [complianceChecked, setComplianceChecked] = useState(false);
-  const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
 
   const fetchDetails = useCallback(async () => {
+    setIsLoading(true);
+    const emptyDetails = { title: '', description: '', socialMediaCaption: '', adCopy: [], hashtags: [] };
+    
     // If we already have initial details (from orchestrator), use them.
     if (initialDetails) {
       setDetails(initialDetails);
-      return;
-    }
-    // Otherwise, fetch them (for non-orchestrated flows like batch presets).
-    setIsLoading(true);
-    setDetails({ title: '', description: '', socialMediaCaption: '', adCopy: [], hashtags: [] });
-    const fetchedDetails = await onGetProductDetails(productName);
-    if (fetchedDetails) {
-      setDetails(fetchedDetails);
+    } else {
+      // Otherwise, fetch them (for non-orchestrated flows like batch presets).
+      setDetails(emptyDetails);
+      const fetchedDetails = await onGetProductDetails(productName);
+      setDetails(fetchedDetails || emptyDetails);
     }
     setIsLoading(false);
   }, [onGetProductDetails, productName, initialDetails]);
@@ -65,7 +48,6 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
     if (isOpen) {
       setPushStep(0);
       setComplianceChecked(false);
-      setCopiedStates({});
       fetchDetails();
     }
   }, [isOpen, fetchDetails]);
@@ -80,19 +62,31 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
       onClose();
     }, 5000);
   };
+  
+  const handleAdCopyChange = (index: number, value: string) => {
+    const newAdCopy = [...details.adCopy];
+    newAdCopy[index] = value;
+    setDetails({ ...details, adCopy: newAdCopy });
+  };
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedStates(prev => ({ ...prev, [id]: true }));
-    setTimeout(() => {
-      setCopiedStates(prev => ({ ...prev, [id]: false }));
-    }, 2000);
+  const handleAddAdCopy = () => {
+    setDetails({ ...details, adCopy: [...details.adCopy, ''] });
+  };
+  
+  const handleRemoveAdCopy = (index: number) => {
+    const newAdCopy = details.adCopy.filter((_, i) => i !== index);
+    setDetails({ ...details, adCopy: newAdCopy });
+  };
+
+  const handleHashtagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tags = e.target.value.split(' ').map(tag => tag.replace(/#/g, ''));
+    setDetails({ ...details, hashtags: tags });
   };
 
 
   if (!isOpen) return null;
   
-  const formattedHashtags = details.hashtags.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ');
+  const formattedHashtags = details.hashtags.filter(t => t).map(tag => `#${tag}`).join(' ');
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -101,7 +95,7 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
         onClick={e => e.stopPropagation()}
         style={{ scrollbarWidth: 'thin', scrollbarColor: '#4f46e5 #1f2937' }}
       >
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10">
             <XCircleIcon className="w-8 h-8" />
         </button>
 
@@ -142,27 +136,60 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
                     placeholder="Describe your amazing product..."
                 />
             </div>
-
-            <div className="border-t border-gray-700 pt-4 space-y-3">
-                 <h3 className="text-md font-semibold text-gray-200">AI-Generated Marketing Kit</h3>
-                 {isLoading && !details.socialMediaCaption && <div className="w-full h-20 bg-gray-700/50 rounded-lg animate-pulse"></div>}
-                 {details.socialMediaCaption && <MarketingCopyDisplay title="Social Media Post" content={details.socialMediaCaption} onCopy={() => handleCopy(details.socialMediaCaption, 'social')} />}
-
+            
+            <div className="relative">
+                <label htmlFor="social-caption" className="block mb-2 text-sm font-medium text-gray-300">Social Media Caption</label>
+                 {isLoading && !details.socialMediaCaption && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse h-24"></div>}
+                <textarea
+                    id="social-caption"
+                    rows={3}
+                    value={details.socialMediaCaption}
+                    onChange={(e) => setDetails({...details, socialMediaCaption: e.target.value})}
+                    className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="Write a catchy caption for social media..."
+                />
+            </div>
+            
+            <div className="space-y-3">
+                <h3 className="text-md font-semibold text-gray-200">Ad Copy Variations</h3>
                  {isLoading && details.adCopy.length === 0 && <div className="w-full h-20 bg-gray-700/50 rounded-lg animate-pulse"></div>}
                  {details.adCopy.map((ad, index) => (
-                    <MarketingCopyDisplay key={index} title={`Ad Copy Variation ${index + 1}`} content={ad} onCopy={() => handleCopy(ad, `ad${index}`)} />
+                    <div key={index} className="relative">
+                       <textarea
+                            rows={2}
+                            value={ad}
+                            onChange={(e) => handleAdCopyChange(index, e.target.value)}
+                            className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 pr-8"
+                            placeholder={`Ad copy variation #${index + 1}`}
+                        />
+                         <button
+                            onClick={() => handleRemoveAdCopy(index)}
+                            className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-400 rounded-md transition"
+                            aria-label={`Remove ad copy ${index + 1}`}
+                         >
+                            <XCircleIcon className="w-5 h-5" />
+                        </button>
+                    </div>
                  ))}
-                
-                {isLoading && details.hashtags.length === 0 && <div className="w-full h-12 bg-gray-700/50 rounded-lg animate-pulse"></div>}
-                {details.hashtags.length > 0 && (
-                    <MarketingCopyDisplay
-                        title="Hashtags"
-                        content={formattedHashtags}
-                        onCopy={() => handleCopy(formattedHashtags, 'tags')}
-                        rows={1}
-                    />
-                )}
+                 <button onClick={handleAddAdCopy} className="flex items-center gap-2 text-sm font-semibold text-purple-300 hover:text-purple-200 transition">
+                     <PlusCircleIcon className="w-5 h-5" />
+                     Add Ad Copy
+                 </button>
             </div>
+
+             <div className="relative">
+                <label htmlFor="hashtags" className="block mb-2 text-sm font-medium text-gray-300">Hashtags</label>
+                {isLoading && details.hashtags.length === 0 && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse"></div>}
+                <input
+                    type="text"
+                    id="hashtags"
+                    value={formattedHashtags}
+                    onChange={handleHashtagsChange}
+                    className="block w-full p-2.5 text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="#space #art #design"
+                />
+            </div>
+
 
             <div className="border-t border-gray-700 pt-4 mt-auto">
                 <label className="flex items-center gap-3 text-sm text-gray-300 cursor-pointer">

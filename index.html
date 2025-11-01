@@ -21,6 +21,23 @@
       .animate-fade-in {
         animation: fadeIn 0.4s ease-out forwards;
       }
+      @keyframes drift {
+        0% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+        25% { transform: translate(20px, 30px) scale(1.1); opacity: 0.3; }
+        50% { transform: translate(-10px, -20px) scale(0.9); opacity: 0.25; }
+        75% { transform: translate(15px, -10px) scale(1.05); opacity: 0.35; }
+        100% { transform: translate(0, 0) scale(1); opacity: 0.2; }
+      }
+      .animate-drift-1 {
+        animation: drift 15s ease-in-out infinite;
+      }
+      .animate-drift-2 {
+        animation: drift 18s ease-in-out infinite reverse;
+      }
+      @keyframes sparkle-anim {
+        0%, 100% { opacity: 0; transform: scale(0.5); }
+        50% { opacity: 1; transform: scale(1.2); }
+      }
       body {
         /* Tailwind's bg-gray-900 is #111827 */
         background-color: #111827;

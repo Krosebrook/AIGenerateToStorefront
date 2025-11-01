@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Modality, Type, Part } from "@google/genai";
 import { ShopifyProductDetails, NewsArticle } from "../App";
 import { BrandKit } from "../components/BrandKitPanel";
@@ -313,7 +314,7 @@ export async function generateProductDetails(base64ImageData: string, mimeType: 
     - "title": A short, catchy, and SEO-friendly product title (max 60 characters).
     - "description": A compelling product description (2-3 sentences) that highlights the design's unique appeal and the product's quality.
     - "socialMediaCaption": A ready-to-use caption for an Instagram or Facebook post, including 1-2 relevant emojis.
-    - "adCopy": An array of two distinct, short ad copy variations suitable for social media ads. Each variation should have a different angle (e.g., one focuses on the design, the other on the feeling it evokes).
+    - "adCopy": An array of EXACTLY two distinct, short ad copy variations for social media ads. Variation 1 MUST focus on the visual style of the design. Variation 2 MUST focus on the emotion or story it tells.
     - "hashtags": An array of 5-7 relevant and popular hashtags (without the '#' symbol).
   `;
 
