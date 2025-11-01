@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { XCircleIcon } from './icons/XCircleIcon';
 import { ShopifyProductDetails } from '../App';
@@ -10,6 +9,7 @@ interface ShopifyModalProps {
   imageUrl: string;
   productName: string;
   onGetProductDetails: (productName: string) => Promise<ShopifyProductDetails | null>;
+  initialDetails: ShopifyProductDetails | null;
 }
 
 const PUSH_MESSAGES = [
@@ -38,7 +38,7 @@ const MarketingCopyDisplay: React.FC<{title: string; content: string; onCopy: ()
 );
 
 
-export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, imageUrl, productName, onGetProductDetails }) => {
+export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, imageUrl, productName, onGetProductDetails, initialDetails }) => {
   const [details, setDetails] = useState<ShopifyProductDetails>({ title: '', description: '', socialMediaCaption: '', adCopy: [], hashtags: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [pushStep, setPushStep] = useState(0);
@@ -46,6 +46,12 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
 
   const fetchDetails = useCallback(async () => {
+    // If we already have initial details (from orchestrator), use them.
+    if (initialDetails) {
+      setDetails(initialDetails);
+      return;
+    }
+    // Otherwise, fetch them (for non-orchestrated flows like batch presets).
     setIsLoading(true);
     setDetails({ title: '', description: '', socialMediaCaption: '', adCopy: [], hashtags: [] });
     const fetchedDetails = await onGetProductDetails(productName);
@@ -53,7 +59,7 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
       setDetails(fetchedDetails);
     }
     setIsLoading(false);
-  }, [onGetProductDetails, productName]);
+  }, [onGetProductDetails, productName, initialDetails]);
 
   useEffect(() => {
     if (isOpen) {

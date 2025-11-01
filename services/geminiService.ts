@@ -17,6 +17,127 @@ export interface GroundingSource {
 
 const PRODUCT_LIST = ['T-Shirt', 'Mug', 'Poster', 'Hoodie', 'Stickers', 'Phone Case', 'Hat', 'Notebook', 'Tote Bag'].join(', ');
 
+const orchestratorResponseSchema = {
+    type: Type.OBJECT,
+    properties: {
+        request_id: { type: Type.STRING },
+        execution_log: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    step: { type: Type.NUMBER },
+                    status: { type: Type.STRING },
+                    detail: { type: Type.STRING }
+                },
+            }
+        },
+        asset_generation_request: {
+            type: Type.OBJECT,
+            properties: {
+                model_name: { type: Type.STRING },
+                target_prompt: { type: Type.STRING },
+                negative_prompt: { type: Type.STRING },
+                resolution: { type: Type.STRING },
+                aspect_ratio: { type: Type.STRING },
+            },
+        },
+        marketing_package: {
+            type: Type.OBJECT,
+            properties: {
+                target_keywords: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                },
+                listing_title: { type: Type.STRING },
+                product_description: { type: Type.STRING },
+                social_caption: { type: Type.STRING },
+                ad_copy_variations: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                },
+                hashtags: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            },
+        }
+    },
+};
+
+export async function orchestrateProductGeneration(
+    userPrompt: string,
+    negativePrompt: string,
+    aspectRatio: string,
+    variations: number,
+): Promise<{ imageUrls: string[], marketingPackage: ShopifyProductDetails }> {
+    const orchestratorSystemPrompt = `You are the Generative AI Architect and E-commerce Design Orchestrator. Your goal is to convert a user's creative idea into a single, structured JSON payload.
+- You MUST output only the final JSON object. Do not include commentary or explanations.
+- Adhere to the provided JSON schema.
+- The 'target_prompt' should be a high-fidelity, highly descriptive, style-constrained prompt suitable for a modern text-to-image model like Imagen 4.
+- The 'marketing_package' should be creative, engaging, and optimized for e-commerce.
+
+User's Creative Idea:
+---
+${userPrompt}
+---
+
+Additional Instructions:
+- Negative prompt cues: ${negativePrompt || 'blurry, text, logo, watermark, extra limbs, bad anatomy'}
+- Target aspect ratio: ${aspectRatio}
+- Resolution target: 4096x4096
+`;
+
+    try {
+        // Step 1: Call Gemini to get the structured plan (image prompt + marketing copy)
+        const planResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: orchestratorSystemPrompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: orchestratorResponseSchema,
+            },
+        });
+
+        const plan = JSON.parse(planResponse.text);
+
+        const { asset_generation_request, marketing_package } = plan;
+
+        // Step 2: Use the generated prompt to create the image
+        const imageResponse = await ai.models.generateImages({
+            model: 'imagen-4.0-generate-001',
+            prompt: asset_generation_request.target_prompt,
+            config: {
+                numberOfImages: variations,
+                outputMimeType: 'image/png',
+                aspectRatio: asset_generation_request.aspect_ratio || aspectRatio,
+            },
+        });
+
+        if (!imageResponse.generatedImages || imageResponse.generatedImages.length === 0) {
+            throw new Error("Image generation step failed to return images.");
+        }
+
+        const imageUrls = imageResponse.generatedImages.map(img => `data:image/png;base64,${img.image.imageBytes}`);
+
+        // Step 3: Map the marketing package to our app's interface
+        const finalMarketingPackage: ShopifyProductDetails = {
+            title: marketing_package.listing_title,
+            description: marketing_package.product_description,
+            socialMediaCaption: marketing_package.social_caption,
+            adCopy: marketing_package.ad_copy_variations,
+            hashtags: marketing_package.hashtags,
+        };
+
+        return { imageUrls, marketingPackage: finalMarketingPackage };
+
+    } catch (error) {
+        console.error("Error during product orchestration:", error);
+        throw new Error("Failed to orchestrate product generation with Gemini API.");
+    }
+}
+
+
 export async function fetchLatestNews(): Promise<{ articles: NewsArticle[], sources: GroundingSource[] }> {
   const prompt = 'Fetch the top 5 latest world news headlines. Respond ONLY with a valid JSON array where each object has "title", "summary", and "url" keys. Do not include any introductory text, markdown formatting, or explanations.';
   try {

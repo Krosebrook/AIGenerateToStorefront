@@ -5,10 +5,11 @@ import { ControlPanel, MerchPreset } from './components/ControlPanel';
 import { ResultDisplay } from './components/ResultDisplay';
 import { ShopifyModal } from './components/ShopifyModal';
 import { ModeSelector, AppMode } from './components/ModeSelector';
-import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, generateImageFromPrompt, fetchLatestNews, GroundingSource } from './services/geminiService';
+import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, orchestrateProductGeneration, fetchLatestNews, GroundingSource } from './services/geminiService';
 import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
 import { BrandKit } from './components/BrandKitPanel';
 import { NewsPanel } from './components/NewsPanel';
+import { MarketingDisplayPanel } from './components/MarketingDisplayPanel';
 
 export interface ShopifyProductDetails {
   title: string;
@@ -36,12 +37,12 @@ const initialBrandKit: BrandKit = {
 
 const GenerateInputPanel: React.FC<{prompt: string, setPrompt: (p: string) => void, isLoading: boolean}> = ({ prompt, setPrompt, isLoading }) => (
     <div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700">
-        <label htmlFor="generate-prompt" className="block text-lg font-semibold text-gray-200 mb-4">1. Describe Your Design</label>
+        <label htmlFor="generate-prompt" className="block text-lg font-semibold text-gray-200 mb-4">1. Describe Your Product Idea</label>
         <textarea
             id="generate-prompt"
             rows={8}
             className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 transition disabled:opacity-70"
-            placeholder="e.g., A cute cat astronaut floating in space, digital art"
+            placeholder="e.g., A t-shirt with a vaporwave-style meditating astronaut, with keywords like retro, synthwave, and cosmic peace."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={isLoading}
@@ -97,6 +98,8 @@ export default function App(): React.ReactElement {
   const [newsSources, setNewsSources] = useState<GroundingSource[]>([]);
   const [isFetchingNews, setIsFetchingNews] = useState<boolean>(false);
   const [newsError, setNewsError] = useState<string | null>(null);
+  
+  const [marketingPackage, setMarketingPackage] = useState<ShopifyProductDetails | null>(null);
 
   useEffect(() => {
     try {
@@ -135,6 +138,7 @@ export default function App(): React.ReactElement {
     setError(null);
     setGeneratedImages([]);
     setProductSuggestions([]);
+    setMarketingPackage(null);
     try {
       const base64 = await fileToBase64(file);
       setSourceImageUrl(base64);
@@ -155,6 +159,7 @@ export default function App(): React.ReactElement {
     setGeneratedImages([]);
     setActiveResultIndex(0);
     setSelectedPresets(presetsToRun);
+    setMarketingPackage(null);
 
     const base64Data = sourceImageUrl.split(',')[1];
     
@@ -192,6 +197,7 @@ export default function App(): React.ReactElement {
       setError(null);
       setGeneratedImages([]);
       setActiveResultIndex(0);
+      setMarketingPackage(null);
       setLoadingProgress({ current: 1, total: 1, message: 'Applying your custom edit...' });
       const base64Data = sourceImageUrl.split(',')[1];
       try {
@@ -220,20 +226,22 @@ export default function App(): React.ReactElement {
     setGeneratedImages([]);
     setSourceImage(null);
     setSourceImageUrl(null);
-    setLoadingProgress({ current: 1, total: variations, message: 'Generating variations...' });
+    setMarketingPackage(null);
+    setLoadingProgress({ current: 1, total: 2, message: 'Orchestrating product plan...' });
 
     try {
-      const newImageUrls = await generateImageFromPrompt(prompt, negativePrompt, variations, aspectRatio);
+      const result = await orchestrateProductGeneration(prompt, negativePrompt, aspectRatio, variations);
       
-      if (!newImageUrls || newImageUrls.length === 0) {
+      if (!result || result.imageUrls.length === 0) {
         throw new Error('API did not return any images.');
       }
 
-      const generatedResultImages = newImageUrls.map((url, index) => ({
+      const generatedResultImages = result.imageUrls.map((url, index) => ({
         name: `Variation ${index + 1}`,
         url: url,
       }));
       setGeneratedImages(generatedResultImages);
+      setMarketingPackage(result.marketingPackage);
       
       const firstImageUrl = generatedResultImages[0].url;
       const newImageFile = await dataURLtoFile(firstImageUrl, `generated-image-1.png`);
@@ -243,7 +251,7 @@ export default function App(): React.ReactElement {
 
     } catch (err) {
       console.error(err);
-      setError('Failed to generate image from prompt. Please try again.');
+      setError('Failed to generate product package. Please try again.');
     } finally {
       setIsLoading(false);
       setLoadingProgress(null);
@@ -268,6 +276,7 @@ export default function App(): React.ReactElement {
     setNewsArticles([]);
     setNewsSources([]);
     setNewsError(null);
+    setMarketingPackage(null);
   }, []);
 
   const handleSuggest = useCallback(async () => {
@@ -327,6 +336,7 @@ export default function App(): React.ReactElement {
   }, []);
   
   const activeProduct = generatedImages[activeResultIndex];
+  const showShopifyButton = (mode === 'edit' && generatedImages.length > 0) && (!!marketingPackage || selectedPresets.length > 0);
 
   return (
     <>
@@ -388,17 +398,18 @@ export default function App(): React.ReactElement {
                   loadingProgress={loadingProgress}
                 />
               </div>
-              <div className="flex flex-col">
+              <div className="flex flex-col gap-8">
                  <ResultDisplay
                   generatedImages={generatedImages}
                   isLoading={isLoading}
                   error={error}
                   onPushToShopify={() => setIsShopifyModalOpen(true)}
-                  showShopifyButton={mode === 'edit' && generatedImages.length > 0}
+                  showShopifyButton={showShopifyButton}
                   activeResultIndex={activeResultIndex}
                   setActiveResultIndex={setActiveResultIndex}
                   loadingProgress={loadingProgress}
                 />
+                {marketingPackage && !isLoading && <MarketingDisplayPanel details={marketingPackage} />}
               </div>
             </div>
              <NewsPanel 
@@ -420,6 +431,7 @@ export default function App(): React.ReactElement {
             imageUrl={activeProduct.url}
             productName={activeProduct.name}
             onGetProductDetails={handleGetProductDetails}
+            initialDetails={marketingPackage}
         />
       )}
     </>
