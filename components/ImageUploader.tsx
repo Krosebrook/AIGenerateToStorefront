@@ -4,22 +4,40 @@ import { XCircleIcon } from './icons/XCircleIcon';
 import { PaintBrushIcon } from './icons/PaintBrushIcon';
 import { StyleIcon } from './icons/StyleIcon';
 import { ExpandIcon } from './icons/ExpandIcon';
+import { UpscaleIcon } from './icons/UpscaleIcon';
+import { AdjustmentsIcon } from './icons/AdjustmentsIcon';
+import { CropIcon } from './icons/CropIcon';
+import { RotateIcon } from './icons/RotateIcon';
+import { ArrowUturnLeftIcon } from './icons/ArrowUturnLeftIcon';
+import { FilterIcon } from './icons/FilterIcon';
 
 interface ImageUploaderProps {
   onImageUpload: (file: File) => void;
   sourceImageUrl: string | null;
   onReset: () => void;
+  onUpscale: () => void;
+  isUpscaling: boolean;
+  onApplyStyle: (styleName: string) => void;
+  isApplyingStyle: boolean;
 }
 
-const ToolbarButton: React.FC<{label: string, onClick: () => void, children: React.ReactNode}> = ({ label, onClick, children }) => (
-    <button
-        onClick={onClick}
-        className="p-2 rounded-full text-gray-300 bg-gray-800/80 hover:bg-purple-600 hover:text-white transition-all duration-200"
-        aria-label={label}
-    >
-        {children}
-    </button>
+const ToolbarButton: React.FC<{label: string, onClick: () => void, children: React.ReactNode, isActive?: boolean}> = ({ label, onClick, children, isActive = false }) => (
+    <div className="relative group">
+        <button
+            onClick={onClick}
+            className={`p-2.5 rounded-full text-gray-300 transition-all duration-200 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 focus:ring-offset-gray-900
+                ${isActive ? 'bg-purple-600 text-white' : 'bg-gray-800/80 hover:bg-purple-600 hover:text-white'}
+            `}
+            aria-label={label}
+        >
+            {children}
+        </button>
+        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+            {label}
+        </div>
+    </div>
 );
+
 
 const SubPanel: React.FC<{title: string, options: string[], onClose: () => void}> = ({ title, options, onClose }) => (
     <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-48 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-3 animate-fade-in">
@@ -35,9 +53,28 @@ const SubPanel: React.FC<{title: string, options: string[], onClose: () => void}
     </div>
 );
 
-export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sourceImageUrl, onReset }) => {
+export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sourceImageUrl, onReset, onUpscale, isUpscaling, onApplyStyle, isApplyingStyle }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [edits, setEdits] = useState({
+    rotation: 0,
+    brightness: 100,
+    contrast: 100,
+    aspectRatio: 'free',
+    filter: 'None',
+  });
+
+  const STYLE_OPTIONS = ['Photorealistic', 'Vector Art', 'Vintage', 'Watercolor', 'Cyberpunk', 'Pop Art'];
+  const FILTER_OPTIONS = ['None', 'Sepia', 'Grayscale', 'Invert', 'Vintage', 'Technicolor'];
+
+  const FILTER_MAP: Record<string, string> = {
+    'None': '',
+    'Sepia': 'sepia(100%)',
+    'Grayscale': 'grayscale(100%)',
+    'Invert': 'invert(100%)',
+    'Vintage': 'sepia(60%) saturate(120%)',
+    'Technicolor': 'contrast(150%) saturate(150%)'
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -64,21 +101,74 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
     }
   }, [onImageUpload]);
 
+  const handleRotate = () => {
+    setEdits(prev => ({ ...prev, rotation: (prev.rotation + 90) % 360 }));
+  };
+
+  const handleAdjustmentsChange = (type: 'brightness' | 'contrast', value: number) => {
+    setEdits(prev => ({ ...prev, [type]: value }));
+  };
+
+  const handleAspectRatioChange = (ratio: string) => {
+    setEdits(prev => ({ ...prev, aspectRatio: ratio }));
+    setActivePanel(null);
+  };
+  
+  const handleFilterChange = (filterName: string) => {
+    setEdits(prev => ({ ...prev, filter: filterName }));
+  };
+
+  const handleResetEdits = () => {
+    setEdits({
+        rotation: 0,
+        brightness: 100,
+        contrast: 100,
+        aspectRatio: 'free',
+        filter: 'None',
+    });
+    setActivePanel(null);
+  }
+
+  const isProcessing = isUpscaling || isApplyingStyle;
+  const processingMessage = isUpscaling ? 'Upscaling Image...' : isApplyingStyle ? 'Applying Style...' : '';
+
+  const aspectRatioClass = {
+    'free': '',
+    '1:1': 'aspect-[1/1]',
+    '16:9': 'aspect-[16/9]',
+    '9:16': 'aspect-[9/16]',
+  }[edits.aspectRatio] || '';
+
+  const imageContainerClasses = `relative group rounded-lg overflow-hidden flex items-center justify-center bg-black/30 transition-all duration-300 ${aspectRatioClass}`;
+  const imageClasses = `relative transition-all duration-300 ${edits.aspectRatio === 'free' ? 'object-contain max-h-80' : 'w-full h-full object-cover'}`;
+
+  const imageStyle = {
+    transform: `rotate(${edits.rotation}deg)`,
+    filter: `${FILTER_MAP[edits.filter] || ''} brightness(${edits.brightness}%) contrast(${edits.contrast}%)`.trim(),
+  };
+
   return (
     <div className={`bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700 transition-transform duration-300 ease-in-out ${sourceImageUrl ? 'scale-[1.02]' : 'scale-100'}`}>
-      <h2 className="text-lg font-semibold text-gray-200 mb-4">1. Upload Your Image</h2>
+      <h2 className="text-lg font-semibold text-gray-200 mb-4">1. Upload & Edit Your Image</h2>
       <div className="relative">
         {sourceImageUrl ? (
-          <div className="relative group rounded-lg overflow-hidden max-h-80 flex items-center justify-center bg-black">
+          <div className={imageContainerClasses}>
             <div
-              className="absolute inset-0 bg-cover bg-center filter blur-lg scale-110 opacity-50"
+              className="absolute inset-0 bg-cover bg-center filter blur-lg scale-110 opacity-30"
               style={{ backgroundImage: `url(${sourceImageUrl})` }}
               aria-hidden="true"
             />
+            {isProcessing && (
+              <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg z-20 animate-fade-in">
+                <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <p className="text-white mt-2 font-semibold">{processingMessage}</p>
+              </div>
+            )}
             <img 
               src={sourceImageUrl} 
               alt="Source preview" 
-              className="relative w-full h-auto max-h-80 object-contain" 
+              className={imageClasses}
+              style={imageStyle}
             />
             <button
               onClick={onReset}
@@ -89,24 +179,172 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
             </button>
 
             {/* Contextual Toolbar */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/70 backdrop-blur-sm p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/70 backdrop-blur-sm p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 border border-white/10">
                 <div className="relative">
-                    <ToolbarButton label="Edit with Brush" onClick={() => setActivePanel(activePanel === 'brush' ? null : 'brush')}>
-                        <PaintBrushIcon className="w-6 h-6" />
+                    <ToolbarButton
+                        label="Crop Image"
+                        onClick={() => setActivePanel(activePanel === 'crop' ? null : 'crop')}
+                        isActive={activePanel === 'crop'}
+                    >
+                        <CropIcon className="w-6 h-6" />
                     </ToolbarButton>
-                    {activePanel === 'brush' && <SubPanel title="Brush Tools" options={['Remove Object', 'Replace Object', 'Recolor Area']} onClose={() => setActivePanel(null)} />}
+                    {activePanel === 'crop' && (
+                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-48 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-3 animate-fade-in">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-xs font-bold text-white">Crop Aspect Ratio</h4>
+                                <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-white"><XCircleIcon className="w-4 h-4" /></button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {['Free', '1:1', '16:9', '9:16'].map(ratio => (
+                                    <button
+                                        key={ratio}
+                                        onClick={() => handleAspectRatioChange(ratio)}
+                                        className={`w-full text-center text-xs p-1.5 rounded-md transition-colors ${edits.aspectRatio === ratio ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-purple-500/50'}`}
+                                    >
+                                        {ratio}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                
+                <ToolbarButton label="Rotate Image" onClick={handleRotate}>
+                    <RotateIcon className="w-6 h-6" />
+                </ToolbarButton>
+                
+                <div className="relative">
+                    <ToolbarButton
+                        label="Adjust Image"
+                        onClick={() => setActivePanel(activePanel === 'adjust' ? null : 'adjust')}
+                        isActive={activePanel === 'adjust'}
+                    >
+                        <AdjustmentsIcon className="w-6 h-6" />
+                    </ToolbarButton>
+                    {activePanel === 'adjust' && (
+                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-56 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-4 animate-fade-in">
+                            <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-xs font-bold text-white">Adjustments</h4>
+                                <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-white"><XCircleIcon className="w-4 h-4" /></button>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <div className="grid grid-cols-3 items-center gap-2">
+                                    <label htmlFor="brightness" className="text-xs text-gray-300 col-span-1">Bright</label>
+                                    <input id="brightness" type="range" min="50" max="150" value={edits.brightness} onChange={(e) => handleAdjustmentsChange('brightness', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+                                </div>
+                                <div className="grid grid-cols-3 items-center gap-2">
+                                    <label htmlFor="contrast" className="text-xs text-gray-300 col-span-1">Contrast</label>
+                                    <input id="contrast" type="range" min="50" max="150" value={edits.contrast} onChange={(e) => handleAdjustmentsChange('contrast', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+                                </div>
+                            </div>
+                            <button onClick={handleResetEdits} className="mt-4 w-full flex items-center justify-center gap-2 text-center text-xs text-white bg-gray-600 hover:bg-gray-500 p-1.5 rounded-md transition-colors">
+                                <ArrowUturnLeftIcon className="w-4 h-4" /> Reset Edits
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div className="relative">
-                    <ToolbarButton label="Apply Style" onClick={() => setActivePanel(activePanel === 'style' ? null : 'style')}>
+                    <ToolbarButton
+                        label="Apply Filter"
+                        onClick={() => setActivePanel(activePanel === 'filter' ? null : 'filter')}
+                        isActive={activePanel === 'filter'}
+                    >
+                        <FilterIcon className="w-6 h-6" />
+                    </ToolbarButton>
+                    {activePanel === 'filter' && (
+                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-48 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-3 animate-fade-in">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-xs font-bold text-white">Apply Filter</h4>
+                                <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-white"><XCircleIcon className="w-4 h-4" /></button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {FILTER_OPTIONS.map(filterName => (
+                                    <button
+                                        key={filterName}
+                                        onClick={() => handleFilterChange(filterName)}
+                                        className={`w-full text-center text-xs p-1.5 rounded-md transition-colors ${edits.filter === filterName ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-purple-500/50'}`}
+                                    >
+                                        {filterName}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="w-px h-6 bg-gray-700 mx-1"></div>
+                <div className="relative">
+                    <ToolbarButton
+                        label="Apply Style"
+                        onClick={() => setActivePanel(activePanel === 'style' ? null : 'style')}
+                        isActive={activePanel === 'style'}
+                    >
                         <StyleIcon className="w-6 h-6" />
                     </ToolbarButton>
-                    {activePanel === 'style' && <SubPanel title="Style Transfer" options={['Photorealistic', 'Vector Art', 'Vintage', 'Watercolor']} onClose={() => setActivePanel(null)} />}
+                    {activePanel === 'style' && (
+                      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-48 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-3 animate-fade-in">
+                          <div className="flex justify-between items-center mb-2">
+                              <h4 className="text-xs font-bold text-white">Style Transfer</h4>
+                              <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-white"><XCircleIcon className="w-4 h-4" /></button>
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                              {STYLE_OPTIONS.map(style => (
+                                  <button
+                                      key={style}
+                                      onClick={() => { onApplyStyle(style); setActivePanel(null); }}
+                                      disabled={isProcessing}
+                                      className="w-full text-left text-xs text-gray-300 hover:bg-purple-500/50 p-1.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-wait"
+                                  >
+                                      {style}
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+                    )}
                 </div>
                  <div className="relative">
-                    <ToolbarButton label="Expand Image" onClick={() => setActivePanel(activePanel === 'expand' ? null : 'expand')}>
+                    <ToolbarButton
+                        label="Expand Image"
+                        onClick={() => setActivePanel(activePanel === 'expand' ? null : 'expand')}
+                        isActive={activePanel === 'expand'}
+                    >
                         <ExpandIcon className="w-6 h-6" />
                     </ToolbarButton>
                     {activePanel === 'expand' && <SubPanel title="Outpainting" options={['Expand 25%', 'Expand 50%', 'Fill Canvas']} onClose={() => setActivePanel(null)} />}
+                </div>
+                <div className="relative">
+                    <ToolbarButton
+                        label="Upscale Image"
+                        onClick={() => setActivePanel(activePanel === 'upscale' ? null : 'upscale')}
+                        isActive={activePanel === 'upscale'}
+                    >
+                        <UpscaleIcon className="w-6 h-6" />
+                    </ToolbarButton>
+                    {activePanel === 'upscale' && 
+                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-48 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-3 animate-fade-in">
+                            <div className="flex justify-between items-center mb-2">
+                                <h4 className="text-xs font-bold text-white">Enhance Resolution</h4>
+                                <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-white"><XCircleIcon className="w-4 h-4" /></button>
+                            </div>
+                            <p className="text-xs text-gray-400 mb-2">Improve image quality for printing.</p>
+                            <button
+                                onClick={() => { onUpscale(); setActivePanel(null); }}
+                                disabled={isProcessing}
+                                className="w-full text-center text-xs text-white bg-purple-600 hover:bg-purple-700 p-1.5 rounded-md transition-colors disabled:bg-gray-500"
+                            >
+                                {isUpscaling ? 'Processing...' : 'Start Upscaling'}
+                            </button>
+                        </div>
+                    }
+                </div>
+                 <div className="relative">
+                    <ToolbarButton
+                        label="Edit with Brush"
+                        onClick={() => setActivePanel(activePanel === 'brush' ? null : 'brush')}
+                        isActive={activePanel === 'brush'}
+                    >
+                        <PaintBrushIcon className="w-6 h-6" />
+                    </ToolbarButton>
+                    {activePanel === 'brush' && <SubPanel title="Brush Tools" options={['Remove Object', 'Replace Object', 'Recolor Area']} onClose={() => setActivePanel(null)} />}
                 </div>
             </div>
           </div>
@@ -131,6 +369,28 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
           </label>
         )}
       </div>
+       <style>
+          {`
+              .range-slider::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 12px;
+                  height: 12px;
+                  background: #c084fc;
+                  cursor: pointer;
+                  border-radius: 50%;
+                  margin-top: -5px;
+              }
+              .range-slider::-moz-range-thumb {
+                  width: 12px;
+                  height: 12px;
+                  background: #c084fc;
+                  cursor: pointer;
+                  border-radius: 50%;
+                  border: none;
+              }
+          `}
+      </style>
     </div>
   );
 };

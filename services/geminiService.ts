@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Modality, Type, Part } from "@google/genai";
 import { ShopifyProductDetails, NewsArticle } from "../App";
 import { BrandKit } from "../components/BrandKitPanel";
@@ -65,6 +64,85 @@ const orchestratorResponseSchema = {
         }
     },
 };
+
+const STYLE_PROMPTS: Record<string, string> = {
+  'Photorealistic': 'Analyze the image and enhance it to be hyper-realistic. Sharpen details, refine textures, and adjust lighting to create a photorealistic, high-fidelity version of the original scene. Do not change the content, only the style.',
+  'Vector Art': 'Transform this image into a clean, modern vector illustration. Use bold lines, flat colors, and simplified shapes. The result should look like a scalable vector graphic, suitable for digital media.',
+  'Vintage': 'Give this image a vintage, retro aesthetic. Apply a faded, warm color palette (sepia tones), add subtle film grain, and introduce minor imperfections like light leaks or soft focus to evoke the feeling of a photograph from the 1970s.',
+  'Watercolor': 'Recreate this image in the style of a watercolor painting. Use soft, blended colors, visible brush strokes, and a textured paper background. The edges should be soft and bleed slightly, characteristic of watercolor art.',
+  'Cyberpunk': `Convert this image to a vibrant, neon-drenched cyberpunk style. Emphasize blues, purples, and pinks. Add glowing elements, digital artifacts, and a high-tech, futuristic feel. The lighting should be dramatic and moody.`,
+  'Pop Art': `Transform this image into a Pop Art style, reminiscent of Andy Warhol. Use bold, contrasting, and saturated colors. Simplify the image into distinct shapes and add Ben-Day dots or other graphic patterns.`,
+};
+
+const MARKETING_VISUAL_PROMPTS = {
+  'Instagram Post': 'Create a photorealistic mockup of an Instagram post featuring the provided design. The design should be the main focus, placed within a modern smartphone screen showing the Instagram UI. The background should be a stylish, minimalist desk or a relevant lifestyle scene that complements the design. Include a generic profile picture, username, and placeholder caption text.',
+  'Facebook Ad': 'Generate a compelling Facebook ad visual. The provided design should be clearly displayed on the relevant product (e.g., a t-shirt if it looks like a t-shirt design). Place this product in an eye-catching, high-energy lifestyle photo. The composition should be dynamic and optimized for a feed, leaving some space for ad copy overlay. The overall mood should be professional and engaging.',
+  'Pinterest Pin': 'Create a visually appealing Pinterest Pin mockup. The provided design should be featured prominently on a product. The overall image should be vertically oriented (2:3 aspect ratio) and follow a bright, clean aesthetic. Add some tasteful text overlay like "New Collection" or "Shop Now" in a stylish font.'
+};
+
+export async function generateMarketingImage(base64ImageData: string, mimeType: string, visualType: keyof typeof MARKETING_VISUAL_PROMPTS): Promise<string> {
+  const prompt = MARKETING_VISUAL_PROMPTS[visualType];
+  if (!prompt) {
+    throw new Error(`Invalid marketing visual type: ${visualType}`);
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          { inlineData: { data: base64ImageData, mimeType: mimeType } },
+          { text: prompt }
+        ],
+      },
+      config: {
+        responseModalities: [Modality.IMAGE],
+      },
+    });
+
+    if (response.candidates && response.candidates[0].content.parts[0].inlineData) {
+      const newBase64Data = response.candidates[0].content.parts[0].inlineData.data;
+      return `data:image/png;base64,${newBase64Data}`;
+    } else {
+      throw new Error(`No image data returned from API for ${visualType}.`);
+    }
+  } catch (error) {
+    console.error(`Error calling Gemini API for marketing visual "${visualType}":`, error);
+    throw new Error(`Failed to generate marketing visual for "${visualType}" with Gemini API.`);
+  }
+}
+
+export async function applyStyleTransfer(base64ImageData: string, mimeType: string, styleName: string): Promise<string> {
+  const prompt = STYLE_PROMPTS[styleName];
+  if (!prompt) {
+    throw new Error(`Invalid style name: ${styleName}`);
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          { inlineData: { data: base64ImageData, mimeType: mimeType } },
+          { text: prompt }
+        ],
+      },
+      config: {
+        responseModalities: [Modality.IMAGE],
+      },
+    });
+
+    if (response.candidates && response.candidates[0].content.parts[0].inlineData) {
+      const newBase64Data = response.candidates[0].content.parts[0].inlineData.data;
+      return `data:image/png;base64,${newBase64Data}`;
+    } else {
+      throw new Error("No styled image data returned from API.");
+    }
+  } catch (error) {
+    console.error("Error calling Gemini API for style transfer:", error);
+    throw new Error("Failed to apply style with Gemini API.");
+  }
+}
 
 export async function orchestrateProductGeneration(
     userPrompt: string,
@@ -265,6 +343,35 @@ export async function editImageWithPrompt(
   } catch (error) {
     console.error("Error calling Gemini API for image editing:", error);
     throw new Error("Failed to generate image with Gemini API.");
+  }
+}
+
+export async function upscaleImage(base64ImageData: string, mimeType: string): Promise<string> {
+  try {
+    const upscalePrompt = "Upscale this image, significantly enhancing its resolution and detail for high-quality printing. Remove any compression artifacts, noise, or blurriness, while preserving the original artistic style and composition. Aim for a photorealistic enhancement.";
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          { inlineData: { data: base64ImageData, mimeType: mimeType } },
+          { text: upscalePrompt }
+        ],
+      },
+      config: {
+        responseModalities: [Modality.IMAGE],
+      },
+    });
+
+    if (response.candidates && response.candidates[0].content.parts[0].inlineData) {
+      const newBase64Data = response.candidates[0].content.parts[0].inlineData.data;
+      return `data:image/png;base64,${newBase64Data}`;
+    } else {
+      throw new Error("No upscaled image data returned from API.");
+    }
+  } catch (error) {
+    console.error("Error calling Gemini API for image upscaling:", error);
+    throw new Error("Failed to upscale image with Gemini API.");
   }
 }
 

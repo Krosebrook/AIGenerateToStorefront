@@ -9,6 +9,7 @@ import { ChevronRightIcon } from './icons/ChevronRightIcon';
 import { MagnifyingGlassPlusIcon } from './icons/MagnifyingGlassPlusIcon';
 import { MagnifyingGlassMinusIcon } from './icons/MagnifyingGlassMinusIcon';
 import { ArrowUturnLeftIcon } from './icons/ArrowUturnLeftIcon';
+import { UpscaleIcon } from './icons/UpscaleIcon';
 
 
 interface ResultDisplayProps {
@@ -19,6 +20,8 @@ interface ResultDisplayProps {
   activeResultIndex: number;
   setActiveResultIndex: (index: number) => void;
   loadingProgress: { current: number, total: number } | null;
+  onUpscale: (index: number) => void;
+  upscalingIndex: number | null;
 }
 
 const LOADING_MESSAGES = [
@@ -41,6 +44,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
   activeResultIndex,
   setActiveResultIndex,
   loadingProgress,
+  onUpscale,
+  upscalingIndex,
 }) => {
   
   const currentImage = generatedImages[activeResultIndex];
@@ -157,10 +162,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                 </p>
                 <div className="w-full max-w-xs mt-8 bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
                     <div 
-                        className="bg-purple-600 h-2.5 rounded-full animate-progress-stripes transition-all duration-300 ease-linear"
+                        className="h-2.5 rounded-full transition-all duration-300 ease-linear animate-shimmer"
                         style={{
-                            backgroundImage: 'linear-gradient(45deg, rgba(255, 255, 255, .15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .15) 50%, rgba(255, 255, 255, .15) 75%, transparent 75%, transparent)',
-                            backgroundSize: '1rem 1rem',
                             width: `${progressPercentage}%`
                         }}
                     />
@@ -170,7 +173,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
     );
   };
 
-  const Sparkle = ({ style }: { style: React.CSSProperties }) => (
+  // FIX: Explicitly type Sparkle as a React.FC to allow the 'key' prop, which is required when rendering lists.
+  const Sparkle: React.FC<{ style: React.CSSProperties }> = ({ style }) => (
     <div 
         className="absolute bg-white rounded-full"
         style={{
@@ -204,6 +208,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
     </div>
   );
   
+  const isCurrentlyUpscaling = upscalingIndex === activeResultIndex;
+
   return (
     <div className="w-full h-full min-h-[40rem] lg:min-h-0 bg-gray-800/30 rounded-2xl p-4 border border-gray-700/50 flex flex-col relative overflow-hidden">
         <div className="flex-grow flex items-center justify-center">
@@ -219,6 +225,12 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                         onMouseLeave={onMouseUp}
                         onWheel={onWheel}
                      >
+                        {isCurrentlyUpscaling && (
+                          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center rounded-lg z-20 animate-fade-in">
+                            <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <p className="text-white mt-2 font-semibold">Upscaling Image...</p>
+                          </div>
+                        )}
                          <img 
                             src={currentImage.url} 
                             alt={currentImage.name} 
@@ -301,6 +313,23 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                      </div>
 
                      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                        <button
+                          onClick={() => onUpscale(activeResultIndex)}
+                          disabled={upscalingIndex !== null}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 text-base font-medium bg-blue-600/90 backdrop-blur-sm text-white rounded-lg hover:bg-blue-500 transition-colors duration-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+                        >
+                            {isCurrentlyUpscaling ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    Upscaling...
+                                </>
+                            ) : (
+                                <>
+                                    <UpscaleIcon className="w-5 h-5" />
+                                    Upscale
+                                </>
+                            )}
+                        </button>
                         <button
                           onClick={handleDownload}
                           className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 text-base font-medium bg-gray-700/80 backdrop-blur-sm text-white rounded-lg hover:bg-purple-600 transition-colors duration-200"

@@ -5,7 +5,7 @@ import { ControlPanel, MerchPreset } from './components/ControlPanel';
 import { ResultDisplay } from './components/ResultDisplay';
 import { ShopifyModal } from './components/ShopifyModal';
 import { ModeSelector, AppMode } from './components/ModeSelector';
-import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, orchestrateProductGeneration, fetchLatestNews, GroundingSource } from './services/geminiService';
+import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, orchestrateProductGeneration, fetchLatestNews, GroundingSource, upscaleImage, applyStyleTransfer, generateMarketingImage } from './services/geminiService';
 import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
 import { BrandKit } from './components/BrandKitPanel';
 import { NewsPanel } from './components/NewsPanel';
@@ -90,6 +90,9 @@ export default function App(): React.ReactElement {
   const [activeResultIndex, setActiveResultIndex] = useState(0);
   const [selectedPresets, setSelectedPresets] = useState<MerchPreset[]>([]);
   const [loadingProgress, setLoadingProgress] = useState<{ current: number, total: number, message: string } | null>(null);
+  const [isUpscalingSource, setIsUpscalingSource] = useState(false);
+  const [upscalingResultIndex, setUpscalingResultIndex] = useState<number | null>(null);
+  const [isApplyingStyle, setIsApplyingStyle] = useState(false);
 
   const [brandKit, setBrandKit] = useState<BrandKit>(initialBrandKit);
   const [useBrandKit, setUseBrandKit] = useState<boolean>(false);
@@ -101,6 +104,8 @@ export default function App(): React.ReactElement {
   const [newsError, setNewsError] = useState<string | null>(null);
   
   const [marketingPackage, setMarketingPackage] = useState<ShopifyProductDetails | null>(null);
+  const [marketingImages, setMarketingImages] = useState<Record<string, string>>({});
+  const [isGeneratingMarketingImages, setIsGeneratingMarketingImages] = useState(false);
 
   useEffect(() => {
     try {
@@ -124,6 +129,12 @@ export default function App(): React.ReactElement {
     }
   }, []);
 
+  useEffect(() => {
+    // Clear generated visuals when the main result image changes
+    setMarketingImages({});
+  }, [activeResultIndex]);
+
+
   const handleUpdateBrandKit = useCallback((newKit: BrandKit) => {
     setBrandKit(newKit);
     localStorage.setItem('brandKit', JSON.stringify(newKit));
@@ -140,6 +151,7 @@ export default function App(): React.ReactElement {
     setGeneratedImages([]);
     setProductSuggestions([]);
     setMarketingPackage(null);
+    setMarketingImages({});
     try {
       const base64 = await fileToBase64(file);
       setSourceImageUrl(base64);
@@ -162,6 +174,7 @@ export default function App(): React.ReactElement {
     setActiveResultIndex(0);
     setSelectedPresets(presetsToRun);
     setMarketingPackage(null);
+    setMarketingImages({});
 
     const base64Data = sourceImageUrl.split(',')[1];
     
@@ -205,6 +218,7 @@ export default function App(): React.ReactElement {
       setGeneratedImages([]);
       setActiveResultIndex(0);
       setMarketingPackage(null);
+      setMarketingImages({});
       setLoadingProgress({ current: 1, total: 1, message: 'Applying your custom edit...' });
       const base64Data = sourceImageUrl.split(',')[1];
       try {
@@ -234,6 +248,7 @@ export default function App(): React.ReactElement {
     setSourceImage(null);
     setSourceImageUrl(null);
     setMarketingPackage(null);
+    setMarketingImages({});
     setLoadingProgress({ current: 1, total: 2, message: 'Orchestrating product plan...' });
 
     try {
@@ -284,6 +299,7 @@ export default function App(): React.ReactElement {
     setNewsSources([]);
     setNewsError(null);
     setMarketingPackage(null);
+    setMarketingImages({});
   }, []);
 
   const handleSuggest = useCallback(async () => {
@@ -337,6 +353,116 @@ export default function App(): React.ReactElement {
     }
   }, []);
   
+  const handleUpscaleSourceImage = useCallback(async () => {
+    if (!sourceImage || !sourceImageUrl) {
+      setError('Cannot upscale without a source image.');
+      return;
+    }
+    setIsUpscalingSource(true);
+    setError(null);
+    try {
+      const base64Data = sourceImageUrl.split(',')[1];
+      const upscaledImageUrl = await upscaleImage(base64Data, sourceImage.type);
+      setSourceImageUrl(upscaledImageUrl);
+      const upscaledImageFile = await dataURLtoFile(upscaledImageUrl, `upscaled-${sourceImage.name}`);
+      setSourceImage(upscaledImageFile);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'An error occurred during upscaling. Please try again.');
+    } finally {
+      setIsUpscalingSource(false);
+    }
+  }, [sourceImage, sourceImageUrl]);
+  
+  const handleUpscaleResultImage = useCallback(async (indexToUpscale: number) => {
+    const imageToUpscale = generatedImages[indexToUpscale];
+    if (!imageToUpscale) {
+      setError('Cannot find the image to upscale.');
+      return;
+    }
+    setUpscalingResultIndex(indexToUpscale);
+    setError(null);
+    try {
+      const base64Data = imageToUpscale.url.split(',')[1];
+      // Assuming generated/edited images are PNGs for simplicity
+      const upscaledImageUrl = await upscaleImage(base64Data, 'image/png');
+      
+      const newGeneratedImages = [...generatedImages];
+      newGeneratedImages[indexToUpscale] = {
+        ...newGeneratedImages[indexToUpscale],
+        url: upscaledImageUrl,
+        name: `${newGeneratedImages[indexToUpscale].name} (Upscaled)`
+      };
+      setGeneratedImages(newGeneratedImages);
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'An error occurred during upscaling. Please try again.');
+    } finally {
+      setUpscalingResultIndex(null);
+    }
+  }, [generatedImages]);
+
+  const handleApplyStyle = useCallback(async (styleName: string) => {
+    if (!sourceImage || !sourceImageUrl) {
+      setError('Cannot apply style without a source image.');
+      return;
+    }
+    setIsApplyingStyle(true);
+    setError(null);
+    try {
+      const base64Data = sourceImageUrl.split(',')[1];
+      const styledImageUrl = await applyStyleTransfer(base64Data, sourceImage.type, styleName);
+      setSourceImageUrl(styledImageUrl);
+      const styledImageFile = await dataURLtoFile(styledImageUrl, `styled-${sourceImage.name}`);
+      setSourceImage(styledImageFile);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'An error occurred during style transfer. Please try again.');
+    } finally {
+      setIsApplyingStyle(false);
+    }
+  }, [sourceImage, sourceImageUrl]);
+
+  const handleGenerateMarketingImages = useCallback(async () => {
+    const activeImage = generatedImages[activeResultIndex];
+    if (!activeImage) {
+        setError('Please select a generated image first.');
+        return;
+    }
+
+    setIsGeneratingMarketingImages(true);
+    setMarketingImages({});
+    setError(null);
+
+    try {
+        const base64Data = activeImage.url.split(',')[1];
+        // Define marketing visual types to generate
+        const visualTypes: ('Instagram Post' | 'Facebook Ad' | 'Pinterest Pin')[] = ['Instagram Post', 'Facebook Ad', 'Pinterest Pin'];
+
+        const promises = visualTypes.map(type => 
+            generateMarketingImage(base64Data, 'image/png', type)
+                .then(url => ({ type, url }))
+        );
+        
+        const results = await Promise.all(promises);
+
+        const newImages = results.reduce((acc, result) => {
+            acc[result.type] = result.url;
+            return acc;
+        }, {} as Record<string, string>);
+
+        setMarketingImages(newImages);
+
+    } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Failed to generate marketing visuals.');
+    } finally {
+        setIsGeneratingMarketingImages(false);
+    }
+  }, [generatedImages, activeResultIndex]);
+
+
   const activeProduct = generatedImages[activeResultIndex];
   const showShopifyButton = (mode === 'edit' && generatedImages.length > 0) && (!!marketingPackage || selectedPresets.length > 0);
 
@@ -359,6 +485,10 @@ export default function App(): React.ReactElement {
                         onImageUpload={handleImageUpload} 
                         sourceImageUrl={sourceImageUrl} 
                         onReset={handleReset}
+                        onUpscale={handleUpscaleSourceImage}
+                        isUpscaling={isUpscalingSource}
+                        onApplyStyle={handleApplyStyle}
+                        isApplyingStyle={isApplyingStyle}
                       />
                       {sourceImageUrl && (
                         <EditPromptPanel 
@@ -410,8 +540,17 @@ export default function App(): React.ReactElement {
                   activeResultIndex={activeResultIndex}
                   setActiveResultIndex={setActiveResultIndex}
                   loadingProgress={loadingProgress}
+                  onUpscale={handleUpscaleResultImage}
+                  upscalingIndex={upscalingResultIndex}
                 />
-                {marketingPackage && !isLoading && <MarketingDisplayPanel details={marketingPackage} />}
+                {marketingPackage && !isLoading && 
+                  <MarketingDisplayPanel 
+                    details={marketingPackage}
+                    onGenerate={handleGenerateMarketingImages}
+                    isGenerating={isGeneratingMarketingImages}
+                    images={marketingImages}
+                  />
+                }
               </div>
             </div>
              <NewsPanel 

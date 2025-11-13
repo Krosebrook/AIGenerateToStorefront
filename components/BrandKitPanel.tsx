@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { UploadIcon } from './icons/UploadIcon';
 import { XCircleIcon } from './icons/XCircleIcon';
@@ -13,6 +12,15 @@ interface BrandKitPanelProps {
     brandKit: BrandKit;
     onUpdateBrandKit: (newKit: BrandKit) => void;
 }
+
+const PREDEFINED_PALETTES = [
+    { name: 'Vibrant Sunset', colors: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF'] },
+    { name: 'Oceanic Blues', colors: ['#003B73', '#0074B7', '#BFD7ED', '#E0E0E0'] },
+    { name: 'Earthy Tones', colors: ['#A87B3F', '#D4A86A', '#606c38', '#283618', '#fefae0'] },
+    { name: 'Pastel Dreams', colors: ['#FAD2E1', '#C5DDF0', '#E1E9B7', '#F3E4C9'] },
+    { name: 'Monochrome', colors: ['#1C1C1C', '#4C4C4C', '#999999', '#CCCCCC', '#F2F2F2'] },
+    { name: 'Neon Pop', colors: ['#F9F871', '#A3F7B5', '#84D2F6', '#6930C3'] },
+];
 
 // --- Color Conversion Utilities ---
 
@@ -89,7 +97,7 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
     };
 
     const handleAddColor = () => {
-        if (currentHex && !brandKit.colors.includes(currentHex) && brandKit.colors.length < 8) {
+        if (currentHex && !brandKit.colors.includes(currentHex) && brandKit.colors.length < 5) {
             onUpdateBrandKit({ ...brandKit, colors: [...brandKit.colors, currentHex] });
         }
     };
@@ -106,6 +114,10 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
 
     const handleRemoveColor = (colorToRemove: string) => {
         onUpdateBrandKit({ ...brandKit, colors: brandKit.colors.filter(c => c !== colorToRemove) });
+    };
+    
+    const handleSelectPalette = (colors: string[]) => {
+        onUpdateBrandKit({ ...brandKit, colors });
     };
 
     useEffect(() => {
@@ -131,9 +143,11 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
 
         setCurrentColor(prev => ({ ...prev, s, v }));
     };
+    
+    const canAddColor = brandKit.colors.length < 5 && !brandKit.colors.includes(currentHex);
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
             <div>
                 <label className="block mb-2 text-sm font-medium text-gray-300">Brand Logo</label>
                 {brandKit.logo ? (
@@ -157,7 +171,7 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
                  {logoError && <p className="text-xs text-red-400 mt-2">{logoError}</p>}
             </div>
             <div>
-                <label className="block mb-2 text-sm font-medium text-gray-300">Brand Colors</label>
+                <label className="block mb-2 text-sm font-medium text-gray-300">Brand Colors ({brandKit.colors.length}/5)</label>
                 <div className="flex items-center gap-2 mb-2">
                     <div className="relative" ref={pickerRef}>
                         <button
@@ -209,7 +223,13 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
                             </div>
                         )}
                     </div>
-                    <button onClick={handleAddColor} className="px-4 py-2 text-sm font-semibold bg-purple-600 rounded-md hover:bg-purple-700 transition-colors h-10">Add</button>
+                    <button 
+                        onClick={handleAddColor} 
+                        disabled={!canAddColor}
+                        className="px-4 py-2 text-sm font-semibold bg-purple-600 rounded-md hover:bg-purple-700 transition-colors h-10 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                    >
+                        Add
+                    </button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-3">
                     {brandKit.colors.map(color => (
@@ -224,6 +244,29 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
                                 <XCircleIcon className="w-3 h-3" />
                             </button>
                         </div>
+                    ))}
+                </div>
+            </div>
+            <div>
+                <label className="block mb-2 text-sm font-medium text-gray-300">Or, select a palette</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {PREDEFINED_PALETTES.map(palette => (
+                        <button
+                            key={palette.name}
+                            onClick={() => handleSelectPalette(palette.colors)}
+                            className="w-full text-left p-2 bg-gray-900/50 hover:bg-gray-700/50 rounded-lg border border-gray-700 hover:border-purple-500 transition-all duration-200 group"
+                        >
+                            <p className="text-xs font-semibold text-gray-200 mb-2 group-hover:text-purple-300 transition-colors">{palette.name}</p>
+                            <div className="flex items-center gap-1.5">
+                                {palette.colors.map(color => (
+                                    <div
+                                        key={color}
+                                        className="w-5 h-5 rounded-full border-2 border-black/20"
+                                        style={{ backgroundColor: color }}
+                                    />
+                                ))}
+                            </div>
+                        </button>
                     ))}
                 </div>
             </div>

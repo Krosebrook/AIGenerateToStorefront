@@ -111,43 +111,57 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
         <div className="flex flex-col gap-4">
             <h2 className="text-2xl font-bold text-white">Create Product Listing</h2>
             
-            <div className="relative">
+            <div>
                 <label htmlFor="title" className="block mb-2 text-sm font-medium text-gray-300">Product Title</label>
-                {isLoading && !details.title && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse"></div>}
-                <input
-                    type="text"
-                    id="title"
-                    value={details.title}
-                    onChange={(e) => setDetails({...details, title: e.target.value})}
-                    className="block w-full p-2.5 text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="e.g., Cool Astronaut T-Shirt"
-                />
+                <div className="relative">
+                  {isLoading && !details.title && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse"></div>}
+                  <input
+                      type="text"
+                      id="title"
+                      value={details.title}
+                      onChange={(e) => setDetails({...details, title: e.target.value})}
+                      className="block w-full p-2.5 text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="e.g., Cool Astronaut T-Shirt"
+                  />
+                </div>
             </div>
             
-             <div className="relative">
-                <label htmlFor="description" className="block mb-2 text-sm font-medium text-gray-300">Product Description</label>
-                 {isLoading && !details.description && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse h-28"></div>}
-                <textarea
-                    id="description"
-                    rows={4}
-                    value={details.description}
-                    onChange={(e) => setDetails({...details, description: e.target.value})}
-                    className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="Describe your amazing product..."
-                />
+            <div>
+                <div className="flex justify-between items-baseline mb-2">
+                  <label htmlFor="description" className="text-sm font-medium text-gray-300">Product Description</label>
+                  <span className="text-xs text-gray-400">{details.description.length} / 5000</span>
+                </div>
+                <div className="relative">
+                   {isLoading && !details.description && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse h-28"></div>}
+                  <textarea
+                      id="description"
+                      rows={4}
+                      value={details.description}
+                      onChange={(e) => setDetails({...details, description: e.target.value})}
+                      className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 resize-y"
+                      placeholder="Describe your amazing product..."
+                      maxLength={5000}
+                  />
+                </div>
             </div>
             
-            <div className="relative">
-                <label htmlFor="social-caption" className="block mb-2 text-sm font-medium text-gray-300">Social Media Caption</label>
-                 {isLoading && !details.socialMediaCaption && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse h-24"></div>}
-                <textarea
-                    id="social-caption"
-                    rows={3}
-                    value={details.socialMediaCaption}
-                    onChange={(e) => setDetails({...details, socialMediaCaption: e.target.value})}
-                    className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="Write a catchy caption for social media..."
-                />
+            <div>
+                <div className="flex justify-between items-baseline mb-2">
+                  <label htmlFor="social-caption" className="text-sm font-medium text-gray-300">Social Media Caption</label>
+                  <span className="text-xs text-gray-400">{details.socialMediaCaption.length} / 1000</span>
+                </div>
+                <div className="relative">
+                   {isLoading && !details.socialMediaCaption && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse h-24"></div>}
+                  <textarea
+                      id="social-caption"
+                      rows={3}
+                      value={details.socialMediaCaption}
+                      onChange={(e) => setDetails({...details, socialMediaCaption: e.target.value})}
+                      className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 resize-y"
+                      placeholder="Write a catchy caption for social media..."
+                      maxLength={1000}
+                  />
+                </div>
             </div>
             
             <div className="space-y-3">
@@ -159,7 +173,7 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
                             rows={2}
                             value={ad}
                             onChange={(e) => handleAdCopyChange(index, e.target.value)}
-                            className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 pr-8"
+                            className="block p-2.5 w-full text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500 pr-8 resize-y"
                             placeholder={`Ad copy variation #${index + 1}`}
                         />
                          <button
@@ -177,17 +191,19 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
                  </button>
             </div>
 
-             <div className="relative">
+            <div>
                 <label htmlFor="hashtags" className="block mb-2 text-sm font-medium text-gray-300">Hashtags</label>
-                {isLoading && details.hashtags.length === 0 && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse"></div>}
-                <input
-                    type="text"
-                    id="hashtags"
-                    value={formattedHashtags}
-                    onChange={handleHashtagsChange}
-                    className="block w-full p-2.5 text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="#space #art #design"
-                />
+                <div className="relative">
+                  {isLoading && details.hashtags.length === 0 && <div className="absolute inset-0 bg-gray-700/50 rounded-lg animate-pulse"></div>}
+                  <input
+                      type="text"
+                      id="hashtags"
+                      value={formattedHashtags}
+                      onChange={handleHashtagsChange}
+                      className="block w-full p-2.5 text-sm text-gray-100 bg-gray-700 rounded-lg border border-gray-600 placeholder-gray-400 focus:ring-purple-500 focus:border-purple-500"
+                      placeholder="#space #art #design"
+                  />
+                </div>
             </div>
 
 
