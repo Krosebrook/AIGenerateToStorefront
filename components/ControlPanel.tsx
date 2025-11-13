@@ -418,7 +418,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                       </div>
                   </summary>
                   <div className="p-4 border-t border-gray-700">
-                      <BrandKitPanel brandKit={brandKit} onUpdateBrandKit={onUpdateBrandKit} />
+                      <BrandKitPanel brandKit={brandKit} onUpdateBrandKit={onUpdateBrandKit} setUseBrandKit={setUseBrandKit} />
                   </div>
               </details>
             )}

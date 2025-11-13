@@ -11,6 +11,7 @@ export interface BrandKit {
 interface BrandKitPanelProps {
     brandKit: BrandKit;
     onUpdateBrandKit: (newKit: BrandKit) => void;
+    setUseBrandKit: (use: boolean) => void;
 }
 
 const PREDEFINED_PALETTES = [
@@ -65,7 +66,7 @@ function hexToHsv(hex: string): { h: number, s: number, v: number } | null {
 }
 
 
-export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdateBrandKit }) => {
+export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdateBrandKit, setUseBrandKit }) => {
     const [logoError, setLogoError] = useState<string | null>(null);
     const [isPickerVisible, setIsPickerVisible] = useState(false);
     const [currentColor, setCurrentColor] = useState({ h: 260, s: 80, v: 90 });
@@ -118,6 +119,7 @@ export const BrandKitPanel: React.FC<BrandKitPanelProps> = ({ brandKit, onUpdate
     
     const handleSelectPalette = (colors: string[]) => {
         onUpdateBrandKit({ ...brandKit, colors });
+        setUseBrandKit(true);
     };
 
     useEffect(() => {
