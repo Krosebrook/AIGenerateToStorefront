@@ -93,12 +93,18 @@ const CATEGORIZED_PRESETS: Record<string, MerchPreset[]> = {
         { id: 'wall-clock', name: 'Wall Clock', template: "Create a mockup of this design on the face of a minimalist, circular wall clock with no numbers. The clock should be hanging on a subtly textured wall, with soft side lighting." },
         { id: 'fridge-magnet', name: 'Fridge Magnet', template: "Render this design as a glossy, rectangular fridge magnet. The magnet should be shown on the door of a stainless steel refrigerator, holding up a small note." },
         { id: 'jigsaw-puzzle', name: 'Jigsaw Puzzle', template: "Generate a mockup of this design as a completed 1000-piece jigsaw puzzle. A few puzzle pieces should be lying next to the finished puzzle on a wooden table." },
-        { id: 'candle-label', name: 'Candle Label', template: "Generate a mockup of this design on a label for a glass jar candle. The candle should be lit, with a soft glow, and placed on a wooden surface in a cozy, dimly lit room." }
+        { id: 'candle-label', name: 'Candle Label', template: "Generate a mockup of this design on a label for a glass jar candle. The candle should be lit, with a soft glow, and placed on a wooden surface in a cozy, dimly lit room." },
+        { id: 'shower-curtain', name: 'Shower Curtain', template: 'Generate a mockup of this design as an all-over print on a fabric shower curtain. The curtain should be hanging in a bright, modern bathroom setting.' },
+        { id: 'doormat', name: 'Doormat', template: 'Create a photorealistic mockup of this design on a coir doormat placed in front of a welcoming front door. The lighting should suggest a sunny day.' },
+        { id: 'area-rug', name: 'Area Rug', template: 'Display this design on a large, rectangular area rug in the center of a stylish, minimalist living room. The rug should show realistic texture and be positioned under a coffee table.' },
     ],
     'Drinkware': [
         { id: 'mug', name: 'Mug', template: 'Render this design on a glossy white ceramic coffee mug. The mockup should be photorealistic, placed on a dark wooden coffee shop table next to a window with soft, morning light creating gentle reflections.' },
         { id: 'water-bottle', name: 'Water Bottle', template: "A photorealistic mockup of this design printed on a matte-finish stainless steel water bottle. The bottle should have condensation droplets and be placed on a yoga mat next to a window." },
         { id: 'beer-can-label', name: 'Beer Can Label', template: "Generate a mockup of this design as a label on a 16oz craft beer can. The can should be photorealistic with condensation, placed on a bar counter." },
+        { id: 'travel-mug', name: 'Travel Mug', template: 'Display this design on a sleek, stainless steel travel mug with a black lid. The mug should be placed on the center console of a car, with soft morning light coming through the windshield.' },
+        { id: 'wine-glass', name: 'Wine Glass (Etched)', template: 'Create a mockup of this design as a subtle, elegant etching on the side of a stemmed wine glass. The glass should be filled with red wine and placed on a dark, polished wooden table next to a cheese board.' },
+        { id: 'pint-glass', name: 'Pint Glass', template: 'Generate a photorealistic mockup of this design printed on a classic pint glass filled with a golden, bubbly beer. The glass should have condensation on it and be set on a wooden bar counter in a warmly lit pub.' },
     ],
     'Stationery & Print': [
         { id: 'notebook', name: 'Notebook', template: 'Generate a mockup of this design on the cover of a spiral-bound notebook. The notebook should be lying on a wooden desk next to a pen, with soft, natural lighting.' },
@@ -106,17 +112,26 @@ const CATEGORIZED_PRESETS: Record<string, MerchPreset[]> = {
         { id: 'greeting-card', name: 'Greeting Card', template: "Generate a mockup of this design on the front of a 5x7 inch greeting card, standing upright next to its envelope on a clean, light-colored surface." },
         { id: 'gift-wrapping-paper', name: 'Gift Wrapping Paper', template: "Generate a repeating pattern of this design on a roll of gift wrapping paper. One part of the paper should be used to wrap a small box, tied with a ribbon." },
         { id: 'book-cover', name: 'Book Cover', template: "Display this design as the front cover of a paperback book. The book should be standing upright at a slight angle on a bookshelf among other books." },
+        { id: 'business-card', name: 'Business Card', template: 'Create a mockup of this design on a premium, thick business card with a matte finish. A small stack of the cards should be arranged neatly on a modern, minimalist desk.' },
+        { id: 'calendar', name: 'Wall Calendar', template: 'Display this design as the main image for a month on a high-quality wall calendar. The calendar should be hanging on a clean, light-colored wall, with the pages slightly curled.' },
+        { id: 'invitation-card', name: 'Invitation Card', template: 'Generate a mockup of this design on a 5x7 inch invitation card made of textured, high-quality paper. The card should be shown alongside a matching envelope on a rustic wooden surface.' },
     ],
     'Digital & Entertainment': [
         { id: 'instagram-post', name: 'Instagram Post', template: "Frame this image within an Instagram post mockup. Include the user interface with a generic profile picture, username, caption area, and engagement icons." },
         { id: 'youtube-thumbnail', name: 'YouTube Thumbnail', template: "Create a YouTube thumbnail mockup using this design as the main visual element. Overlay a bold, catchy title in a large font (e.g., 'YOU WON\\'T BELIEVE THIS!') to simulate a real thumbnail." },
         { id: 'vinyl-record-cover', name: 'Vinyl Record Cover', template: "Design a 12x12 inch vinyl record album cover with this artwork. The mockup should show the record sleeve partially pulled out, revealing the black vinyl disc." },
         { id: 'skateboard-deck', name: 'Skateboard Deck', template: "Create a photorealistic mockup of this design as the graphic on the bottom of a skateboard deck. The deck should be leaning against a concrete wall in a skatepark." },
+        { id: 'podcast-cover', name: 'Podcast Cover Art', template: 'Frame this design as a podcast cover art thumbnail within a smartphone screen showing a podcast app interface. The background should be clean and simple to make the artwork pop.' },
+        { id: 'video-game-case', name: 'Video Game Case', template: 'Display this design as the front cover of a video game case (like a PlayStation 5 or Xbox Series X case). The case should be standing upright on a shelf next to other game cases.' },
+        { id: 'streaming-service-thumbnail', name: 'Streaming Thumbnail', template: 'Create a mockup of this design as a thumbnail for a show or movie on a streaming service interface displayed on a large TV screen. The UI should look familiar, like Netflix or Disney+.' },
     ],
     'Packaging': [
         { id: 'coffee-bag', name: 'Coffee Bag', template: "Create a mockup of this design on the front of a matte black, stand-up coffee bag. The bag should be placed on a rustic counter with scattered coffee beans." },
         { id: 'chocolate-wrapper', name: 'Chocolate Bar Wrapper', template: "Generate a photorealistic mockup of this design on the wrapper of an artisanal chocolate bar. The bar should be partially unwrapped to show the chocolate inside." },
         { id: 'cereal-box', name: 'Cereal Box', template: "Create a mockup of this design on the front of a colorful, fun cereal box. The box should be on a kitchen table next to a bowl of cereal." },
+        { id: 'pizza-box', name: 'Pizza Box', template: 'Generate a mockup of this design printed on the top of a clean, white cardboard pizza box. The box should be closed and placed on a kitchen counter.' },
+        { id: 'shopping-bag', name: 'Shopping Bag', template: 'Display this design on a stylish paper shopping bag with rope handles. The bag should be standing upright, with some colorful tissue paper peeking out from the top.' },
+        { id: 'cosmetic-tube', name: 'Cosmetic Tube', template: 'Create a mockup of this design on a soft-touch cosmetic tube (like for a lotion or cream). The tube should be standing at a slight angle on a clean, white bathroom counter next to a small plant.' },
     ]
 };
 

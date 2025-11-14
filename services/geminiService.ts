@@ -348,7 +348,7 @@ export async function editImageWithPrompt(
 
 export async function upscaleImage(base64ImageData: string, mimeType: string): Promise<string> {
   try {
-    const upscalePrompt = "Upscale this image, significantly enhancing its resolution and detail for high-quality printing. Remove any compression artifacts, noise, or blurriness, while preserving the original artistic style and composition. Aim for a photorealistic enhancement.";
+    const upscalePrompt = "Upscale this image to 2x its original size, significantly enhancing its resolution and detail for high-quality printing. Remove any compression artifacts, noise, or blurriness, while preserving the original artistic style and composition. Aim for a photorealistic enhancement.";
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
