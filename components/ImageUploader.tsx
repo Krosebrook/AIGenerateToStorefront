@@ -53,16 +53,25 @@ const SubPanel: React.FC<{title: string, options: string[], onClose: () => void}
     </div>
 );
 
-export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sourceImageUrl, onReset, onUpscale, isUpscaling, onApplyStyle, isApplyingStyle }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [activePanel, setActivePanel] = useState<string | null>(null);
-  const [edits, setEdits] = useState({
+const initialEdits = {
     rotation: 0,
     brightness: 100,
     contrast: 100,
     aspectRatio: 'free',
     filter: 'None',
-  });
+    hue: 0,
+    saturation: 100,
+    colorBalance: {
+      shadows: '#000000', // Neutral for 'screen' blend mode
+      midtones: '#808080', // Neutral for 'overlay' blend mode
+      highlights: '#ffffff', // Neutral for 'multiply' blend mode
+    }
+};
+
+export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sourceImageUrl, onReset, onUpscale, isUpscaling, onApplyStyle, isApplyingStyle }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [edits, setEdits] = useState(initialEdits);
 
   const STYLE_OPTIONS = ['Photorealistic', 'Vector Art', 'Vintage', 'Watercolor', 'Cyberpunk', 'Pop Art'];
   const FILTER_OPTIONS = ['None', 'Sepia', 'Grayscale', 'Invert', 'Vintage', 'Technicolor'];
@@ -105,8 +114,18 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
     setEdits(prev => ({ ...prev, rotation: (prev.rotation + 90) % 360 }));
   };
 
-  const handleAdjustmentsChange = (type: 'brightness' | 'contrast', value: number) => {
+  const handleAdjustmentsChange = (type: 'brightness' | 'contrast' | 'hue' | 'saturation', value: number) => {
     setEdits(prev => ({ ...prev, [type]: value }));
+  };
+  
+  const handleColorBalanceChange = (type: 'shadows' | 'midtones' | 'highlights', value: string) => {
+    setEdits(prev => ({
+        ...prev,
+        colorBalance: {
+            ...prev.colorBalance,
+            [type]: value,
+        },
+    }));
   };
 
   const handleAspectRatioChange = (ratio: string) => {
@@ -119,13 +138,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
   };
 
   const handleResetEdits = () => {
-    setEdits({
-        rotation: 0,
-        brightness: 100,
-        contrast: 100,
-        aspectRatio: 'free',
-        filter: 'None',
-    });
+    setEdits(initialEdits);
     setActivePanel(null);
   }
 
@@ -140,11 +153,17 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
   }[edits.aspectRatio] || '';
 
   const imageContainerClasses = `relative group rounded-lg overflow-hidden flex items-center justify-center bg-black/30 transition-all duration-300 ${aspectRatioClass}`;
-  const imageClasses = `relative transition-all duration-300 ${edits.aspectRatio === 'free' ? 'object-contain max-h-80' : 'w-full h-full object-cover'}`;
+  const imageClasses = `relative transition-all duration-300 isolate ${edits.aspectRatio === 'free' ? 'object-contain max-h-80' : 'w-full h-full object-cover'}`;
 
   const imageStyle = {
     transform: `rotate(${edits.rotation}deg)`,
-    filter: `${FILTER_MAP[edits.filter] || ''} brightness(${edits.brightness}%) contrast(${edits.contrast}%)`.trim(),
+    filter: `
+      ${FILTER_MAP[edits.filter] || ''} 
+      brightness(${edits.brightness}%) 
+      contrast(${edits.contrast}%)
+      hue-rotate(${edits.hue}deg)
+      saturate(${edits.saturation}%)
+    `.trim(),
   };
 
   return (
@@ -164,6 +183,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
                 <p className="text-white mt-2 font-semibold">{processingMessage}</p>
               </div>
             )}
+            
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: edits.colorBalance.highlights, mixBlendMode: 'multiply' }} />
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: edits.colorBalance.midtones, mixBlendMode: 'overlay' }} />
+            <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: edits.colorBalance.shadows, mixBlendMode: 'screen' }} />
+
             <img 
               src={sourceImageUrl} 
               alt="Source preview" 
@@ -215,26 +239,56 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
                 
                 <div className="relative">
                     <ToolbarButton
-                        label="Adjust Image"
+                        label="Color & Tone"
                         onClick={() => setActivePanel(activePanel === 'adjust' ? null : 'adjust')}
                         isActive={activePanel === 'adjust'}
                     >
                         <AdjustmentsIcon className="w-6 h-6" />
                     </ToolbarButton>
                     {activePanel === 'adjust' && (
-                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-56 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-4 animate-fade-in">
+                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-72 bg-gray-900/80 backdrop-blur-md border border-gray-700 rounded-lg shadow-2xl p-4 animate-fade-in">
                             <div className="flex justify-between items-center mb-3">
-                                <h4 className="text-xs font-bold text-white">Adjustments</h4>
+                                <h4 className="text-sm font-bold text-white">Color & Tone Adjustments</h4>
                                 <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-white"><XCircleIcon className="w-4 h-4" /></button>
                             </div>
-                            <div className="flex flex-col gap-3">
-                                <div className="grid grid-cols-3 items-center gap-2">
-                                    <label htmlFor="brightness" className="text-xs text-gray-300 col-span-1">Bright</label>
-                                    <input id="brightness" type="range" min="50" max="150" value={edits.brightness} onChange={(e) => handleAdjustmentsChange('brightness', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+                            <div className="flex flex-col gap-4">
+                                {/* Basic Tone */}
+                                <div>
+                                    <h5 className="text-xs font-semibold text-gray-400 mb-2">Basic Tone</h5>
+                                    <div className="grid grid-cols-3 items-center gap-2 mb-2">
+                                        <label htmlFor="brightness" className="text-xs text-gray-300 col-span-1">Brightness</label>
+                                        <input id="brightness" type="range" min="50" max="150" value={edits.brightness} onChange={(e) => handleAdjustmentsChange('brightness', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center gap-2">
+                                        <label htmlFor="contrast" className="text-xs text-gray-300 col-span-1">Contrast</label>
+                                        <input id="contrast" type="range" min="50" max="150" value={edits.contrast} onChange={(e) => handleAdjustmentsChange('contrast', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-3 items-center gap-2">
-                                    <label htmlFor="contrast" className="text-xs text-gray-300 col-span-1">Contrast</label>
-                                    <input id="contrast" type="range" min="50" max="150" value={edits.contrast} onChange={(e) => handleAdjustmentsChange('contrast', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+
+                                {/* Color */}
+                                <div>
+                                    <h5 className="text-xs font-semibold text-gray-400 mb-2">Color</h5>
+                                    <div className="grid grid-cols-3 items-center gap-2 mb-2">
+                                        <label htmlFor="hue" className="text-xs text-gray-300 col-span-1">Hue</label>
+                                        <input id="hue" type="range" min="-180" max="180" value={edits.hue} onChange={(e) => handleAdjustmentsChange('hue', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center gap-2">
+                                        <label htmlFor="saturation" className="text-xs text-gray-300 col-span-1">Saturation</label>
+                                        <input id="saturation" type="range" min="0" max="200" value={edits.saturation} onChange={(e) => handleAdjustmentsChange('saturation', parseInt(e.target.value))} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer col-span-2 range-slider" />
+                                    </div>
+                                </div>
+
+                                {/* Color Balance */}
+                                <div>
+                                    <h5 className="text-xs font-semibold text-gray-400 mb-2">Color Balance</h5>
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <label className="text-xs text-gray-300">Shadows</label>
+                                        <label className="text-xs text-gray-300">Midtones</label>
+                                        <label className="text-xs text-gray-300">Highlights</label>
+                                        <input type="color" value={edits.colorBalance.shadows} onChange={(e) => handleColorBalanceChange('shadows', e.target.value)} className="w-full h-8 bg-transparent border-none rounded-md cursor-pointer" />
+                                        <input type="color" value={edits.colorBalance.midtones} onChange={(e) => handleColorBalanceChange('midtones', e.target.value)} className="w-full h-8 bg-transparent border-none rounded-md cursor-pointer" />
+                                        <input type="color" value={edits.colorBalance.highlights} onChange={(e) => handleColorBalanceChange('highlights', e.target.value)} className="w-full h-8 bg-transparent border-none rounded-md cursor-pointer" />
+                                    </div>
                                 </div>
                             </div>
                             <button onClick={handleResetEdits} className="mt-4 w-full flex items-center justify-center gap-2 text-center text-xs text-white bg-gray-600 hover:bg-gray-500 p-1.5 rounded-md transition-colors">
@@ -388,6 +442,17 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageUpload, sou
                   cursor: pointer;
                   border-radius: 50%;
                   border: none;
+              }
+              input[type="color"]::-webkit-color-swatch-wrapper {
+                  padding: 0;
+              }
+              input[type="color"]::-webkit-color-swatch {
+                  border: none;
+                  border-radius: 0.375rem; /* rounded-md */
+              }
+              input[type="color"]::-moz-color-swatch {
+                  border: none;
+                  border-radius: 0.375rem; /* rounded-md */
               }
           `}
       </style>
