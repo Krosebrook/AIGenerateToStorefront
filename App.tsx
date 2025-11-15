@@ -38,7 +38,7 @@ const initialBrandKit: BrandKit = {
 
 const GenerateInputPanel: React.FC<{prompt: string, setPrompt: (p: string) => void, isLoading: boolean}> = ({ prompt, setPrompt, isLoading }) => (
     <div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700">
-        <label htmlFor="generate-prompt" className="block text-lg font-semibold text-gray-200 mb-4">1. Describe Your Product Idea</label>
+        <label htmlFor="generate-prompt" className="block text-lg font-semibold text-gray-200 mb-4">2. Describe Your Product Idea</label>
         <textarea
             id="generate-prompt"
             rows={8}
@@ -252,44 +252,73 @@ export default function App(): React.ReactElement {
       setError('Please enter a prompt to generate an image.');
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
     setGeneratedImages([]);
-    setSourceImage(null);
-    setSourceImageUrl(null);
     setMarketingPackage(null);
     setMarketingImages({});
-    setLoadingProgress({ current: 1, total: 2, message: 'Orchestrating product plan...' });
 
-    try {
-      const result = await orchestrateProductGeneration(prompt, negativePrompt, aspectRatio, variations);
-      
-      if (!result || result.imageUrls.length === 0) {
-        throw new Error('API did not return any images.');
-      }
+    // CASE 1: GENERATE WITH AN UPLOADED IMAGE + TEXT PROMPT
+    if (sourceImage && sourceImageUrl) {
+        setLoadingProgress({ current: 0, total: variations, message: 'Initializing generation...' });
+        const base64Data = sourceImageUrl.split(',')[1];
+        
+        try {
+            const results: GeneratedImage[] = [];
+            for (let i = 0; i < variations; i++) {
+                 setLoadingProgress({ current: i + 1, total: variations, message: `Generating variation ${i + 1}...` });
+                 const imageUrl = await editImageWithPrompt(base64Data, sourceImage.type, prompt, negativePrompt, useBrandKit ? brandKit : undefined);
+                 results.push({ name: `Variation ${i + 1}`, url: imageUrl });
+                 setGeneratedImages([...results]);
+            }
 
-      const generatedResultImages = result.imageUrls.map((url, index) => ({
-        name: `Variation ${index + 1}`,
-        url: url,
-      }));
-      setGeneratedImages(generatedResultImages);
-      setMarketingPackage(result.marketingPackage);
-      
-      const firstImageUrl = generatedResultImages[0].url;
-      const newImageFile = await dataURLtoFile(firstImageUrl, `generated-image-1.png`);
-      setSourceImage(newImageFile);
-      setSourceImageUrl(firstImageUrl);
-      setMode('edit');
+            if (results.length === 0) {
+                throw new Error('API did not return any images.');
+            }
 
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to generate product package. Please try again.');
-    } finally {
-      setIsLoading(false);
-      setLoadingProgress(null);
+            setGeneratedImages(results);
+            setMode('edit'); // Switch to edit mode to show results
+
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || 'Failed to generate from image and prompt. Please try again.');
+        } finally {
+            setIsLoading(false);
+            setLoadingProgress(null);
+        }
+    // CASE 2: GENERATE WITH TEXT PROMPT ONLY
+    } else {
+        setLoadingProgress({ current: 1, total: 2, message: 'Orchestrating product plan...' });
+        try {
+          const result = await orchestrateProductGeneration(prompt, negativePrompt, aspectRatio, variations);
+          
+          if (!result || result.imageUrls.length === 0) {
+            throw new Error('API did not return any images.');
+          }
+
+          const generatedResultImages = result.imageUrls.map((url, index) => ({
+            name: `Variation ${index + 1}`,
+            url: url,
+          }));
+          setGeneratedImages(generatedResultImages);
+          setMarketingPackage(result.marketingPackage);
+          
+          const firstImageUrl = generatedResultImages[0].url;
+          const newImageFile = await dataURLtoFile(firstImageUrl, `generated-image-1.png`);
+          setSourceImage(newImageFile);
+          setSourceImageUrl(firstImageUrl);
+          setMode('edit');
+
+        } catch (err: any) {
+          console.error(err);
+          setError(err.message || 'Failed to generate product package. Please try again.');
+        } finally {
+          setIsLoading(false);
+          setLoadingProgress(null);
+        }
     }
-  }, [prompt, negativePrompt, variations, aspectRatio]);
+  }, [prompt, negativePrompt, variations, aspectRatio, sourceImage, sourceImageUrl, useBrandKit, brandKit]);
 
   const handleReset = useCallback(() => {
     setSourceImage(null);
@@ -389,31 +418,24 @@ export default function App(): React.ReactElement {
   }, [sourceImage, sourceImageUrl]);
   
   const handleUpscaleResultImage = useCallback(async (indexToUpscale: number) => {
-    const displayedImage = activeVariationUrl || generatedImages[indexToUpscale]?.url;
-    if (!displayedImage) {
+    const imageToUpscale = generatedImages[indexToUpscale];
+    if (!imageToUpscale) {
       setError('Cannot find the image to upscale.');
       return;
     }
     setUpscalingResultIndex(indexToUpscale);
     setError(null);
     try {
-      const base64Data = displayedImage.split(',')[1];
+      const base64Data = imageToUpscale.url.split(',')[1];
       const upscaledImageUrl = await upscaleImage(base64Data, 'image/png');
       
-      // If a variation was upscaled, update that variation's URL
-      if (activeVariationUrl) {
-          setBackgroundVariations(vars => vars.map(v => v.url === activeVariationUrl ? { ...v, url: upscaledImageUrl } : v));
-          setColorVariations(vars => vars.map(v => v.url === activeVariationUrl ? { ...v, url: upscaledImageUrl } : v));
-          setActiveVariationUrl(upscaledImageUrl);
-      } else { // Otherwise update the main generated image
-          const newGeneratedImages = [...generatedImages];
-          newGeneratedImages[indexToUpscale] = {
-            ...newGeneratedImages[indexToUpscale],
-            url: upscaledImageUrl,
-            name: `${newGeneratedImages[indexToUpscale].name} (Upscaled)`
-          };
-          setGeneratedImages(newGeneratedImages);
-      }
+      const newGeneratedImages = [...generatedImages];
+      newGeneratedImages[indexToUpscale] = {
+        ...newGeneratedImages[indexToUpscale],
+        url: upscaledImageUrl,
+        name: `${newGeneratedImages[indexToUpscale].name} (Upscaled)`
+      };
+      setGeneratedImages(newGeneratedImages);
 
     } catch (err: any) {
       console.error(err);
@@ -421,7 +443,7 @@ export default function App(): React.ReactElement {
     } finally {
       setUpscalingResultIndex(null);
     }
-  }, [generatedImages, activeVariationUrl]);
+  }, [generatedImages]);
 
   const handleApplyStyle = useCallback(async (styleName: string) => {
     if (!sourceImage || !sourceImageUrl) {
@@ -564,7 +586,20 @@ export default function App(): React.ReactElement {
               <div className="flex flex-col gap-8">
                 <div key={mode} className="animate-fade-in flex flex-col gap-8">
                   {mode === 'generate' ? (
+                    <>
+                      <ImageUploader
+                        onImageUpload={handleImageUpload}
+                        sourceImageUrl={sourceImageUrl}
+                        onReset={handleReset}
+                        isSimple
+                        title="1. (Optional) Start With an Image"
+                        onUpscale={() => {}}
+                        isUpscaling={false}
+                        onApplyStyle={() => {}}
+                        isApplyingStyle={false}
+                      />
                       <GenerateInputPanel prompt={prompt} setPrompt={setPrompt} isLoading={isLoading} />
+                    </>
                   ) : (
                     <>
                       <ImageUploader 
@@ -663,7 +698,7 @@ export default function App(): React.ReactElement {
          <ShopifyModal
             isOpen={isShopifyModalOpen}
             onClose={() => setIsShopifyModalOpen(false)}
-            imageUrl={activeVariationUrl || activeProduct.url}
+            imageUrl={activeProduct.url}
             productName={activeProduct.name}
             onGetProductDetails={handleGetProductDetails}
             initialDetails={marketingPackage}
