@@ -10,6 +10,8 @@ import { MagnifyingGlassPlusIcon } from './icons/MagnifyingGlassPlusIcon';
 import { MagnifyingGlassMinusIcon } from './icons/MagnifyingGlassMinusIcon';
 import { ArrowUturnLeftIcon } from './icons/ArrowUturnLeftIcon';
 import { UpscaleIcon } from './icons/UpscaleIcon';
+import { LandscapeIcon } from './icons/LandscapeIcon';
+import { SwatchIcon } from './icons/SwatchIcon';
 
 
 interface ResultDisplayProps {
@@ -22,6 +24,14 @@ interface ResultDisplayProps {
   loadingProgress: { current: number, total: number } | null;
   onUpscale: (index: number) => void;
   upscalingIndex: number | null;
+  onGenerateBackgrounds: () => void;
+  isGeneratingBackgrounds: boolean;
+  backgroundVariations: GeneratedImage[];
+  onGenerateColorVariations: () => void;
+  isGeneratingColorVariations: boolean;
+  colorVariations: GeneratedImage[];
+  onSelectVariation: (url: string | null) => void;
+  displayedImageUrl: string | null;
 }
 
 const LOADING_MESSAGES = [
@@ -46,6 +56,14 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
   loadingProgress,
   onUpscale,
   upscalingIndex,
+  onGenerateBackgrounds,
+  isGeneratingBackgrounds,
+  backgroundVariations,
+  onGenerateColorVariations,
+  isGeneratingColorVariations,
+  colorVariations,
+  onSelectVariation,
+  displayedImageUrl,
 }) => {
   
   const currentImage = generatedImages[activeResultIndex];
@@ -55,6 +73,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
+  
+  const mainImageUrl = displayedImageUrl || currentImage?.url;
 
   const handleResetView = useCallback(() => {
     setScale(1);
@@ -63,7 +83,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
 
   useEffect(() => {
     handleResetView();
-  }, [currentImage, handleResetView]);
+  }, [currentImage, mainImageUrl, handleResetView]);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only main button
@@ -102,9 +122,9 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
   }, [scale]);
 
   const handleDownload = () => {
-    if (currentImage) {
+    if (mainImageUrl) {
       const link = document.createElement('a');
-      link.href = currentImage.url;
+      link.href = mainImageUrl;
       link.download = `${currentImage.name.replace(/\s+/g, '_')}-mockup.png`;
       document.body.appendChild(link);
       link.click();
@@ -173,7 +193,6 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
     );
   };
 
-  // FIX: Explicitly type Sparkle as a React.FC to allow the 'key' prop, which is required when rendering lists.
   const Sparkle: React.FC<{ style: React.CSSProperties }> = ({ style }) => (
     <div 
         className="absolute bg-white rounded-full"
@@ -210,15 +229,23 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
   
   const isCurrentlyUpscaling = upscalingIndex === activeResultIndex;
 
+  const allThumbnails = [
+    { name: 'Original', url: currentImage?.url, isOriginal: true },
+    ...backgroundVariations,
+    ...colorVariations,
+  ];
+  
+  const showThumbnails = backgroundVariations.length > 0 || colorVariations.length > 0;
+
   return (
     <div className="w-full h-full min-h-[40rem] lg:min-h-0 bg-gray-800/30 rounded-2xl p-4 border border-gray-700/50 flex flex-col relative overflow-hidden">
-        <div className="flex-grow flex items-center justify-center">
+        <div className="flex-grow flex items-center justify-center min-h-0">
             {isLoading ? <LoadingPlaceholder /> :
              generatedImages.length > 0 && currentImage ? (
-                 <div className="w-full h-full flex flex-col">
+                 <div className="w-full h-full flex flex-col gap-4">
                      <div 
                         ref={imageContainerRef}
-                        className="relative flex-grow w-full flex items-center justify-center overflow-hidden cursor-grab"
+                        className="relative flex-grow w-full flex items-center justify-center overflow-hidden cursor-grab rounded-lg"
                         onMouseDown={onMouseDown}
                         onMouseMove={onMouseMove}
                         onMouseUp={onMouseUp}
@@ -232,51 +259,20 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                           </div>
                         )}
                          <img 
-                            src={currentImage.url} 
-                            alt={currentImage.name} 
+                            src={mainImageUrl}
+                            alt={currentImage.name}
                             className="max-w-full max-h-full object-contain rounded-lg transition-transform duration-100"
                             style={{ 
                                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                                touchAction: 'none' // Essential for preventing default touch behaviors
+                                touchAction: 'none'
                             }}
                          />
                          
-                         {/* Zoom Controls */}
-                         <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/70 backdrop-blur-sm p-2 rounded-full shadow-lg">
+                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/70 backdrop-blur-sm p-2 rounded-full shadow-lg">
                             <button onClick={() => setScale(s => Math.max(0.5, s - 0.2))} className="p-2 text-gray-300 hover:text-white hover:bg-purple-600 rounded-full transition-colors" aria-label="Zoom out">
                                 <MagnifyingGlassMinusIcon className="w-5 h-5" />
                             </button>
-                            <input
-                                type="range"
-                                min="0.5"
-                                max="5"
-                                step="0.01"
-                                value={scale}
-                                onChange={(e) => setScale(parseFloat(e.target.value))}
-                                className="w-32 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer range-slider"
-                                aria-label="Zoom slider"
-                            />
-                            <style>
-                                {`
-                                    .range-slider::-webkit-slider-thumb {
-                                        -webkit-appearance: none;
-                                        appearance: none;
-                                        width: 16px;
-                                        height: 16px;
-                                        background: #a855f7;
-                                        cursor: pointer;
-                                        border-radius: 50%;
-                                    }
-                                    .range-slider::-moz-range-thumb {
-                                        width: 16px;
-                                        height: 16px;
-                                        background: #a855f7;
-                                        cursor: pointer;
-                                        border-radius: 50%;
-                                        border: none;
-                                    }
-                                `}
-                            </style>
+                            <span className="text-xs font-semibold w-10 text-center">{Math.round(scale * 100)}%</span>
                              <button onClick={() => setScale(s => Math.min(5, s + 0.2))} className="p-2 text-gray-300 hover:text-white hover:bg-purple-600 rounded-full transition-colors" aria-label="Zoom in">
                                 <MagnifyingGlassPlusIcon className="w-5 h-5" />
                             </button>
@@ -286,7 +282,6 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                             </button>
                          </div>
                          
-                         {/* Carousel controls */}
                          {generatedImages.length > 1 && (
                             <>
                                 <button 
@@ -305,45 +300,71 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                                 >
                                     <ChevronRightIcon className="w-6 h-6" />
                                 </button>
-                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900/80 backdrop-blur-sm rounded-full text-sm font-semibold">
+                                 <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900/80 backdrop-blur-sm rounded-full text-sm font-semibold">
                                     {currentImage.name} ({activeResultIndex + 1} / {generatedImages.length})
                                  </div>
                             </>
                          )}
                      </div>
+                     
+                     {showThumbnails && (
+                        <div className="flex-shrink-0">
+                          <div className="flex items-center gap-3 overflow-x-auto p-2 -mx-2">
+                            {allThumbnails.map((thumb, index) => {
+                                const isOriginal = thumb.isOriginal;
+                                const isActive = isOriginal ? !displayedImageUrl : displayedImageUrl === thumb.url;
+                                return (
+                                    <button 
+                                        key={index} 
+                                        onClick={() => onSelectVariation(isOriginal ? null : thumb.url)}
+                                        className={`relative w-20 h-20 rounded-md flex-shrink-0 overflow-hidden border-2 transition-all duration-200
+                                            ${isActive ? 'border-purple-500 scale-105' : 'border-gray-600 hover:border-purple-400'}`}
+                                    >
+                                        <img src={thumb.url} alt={thumb.name} className="w-full h-full object-cover" />
+                                        <div className="absolute bottom-0 left-0 w-full p-1 bg-black/60 text-white text-[10px] text-center font-semibold truncate">{thumb.name}</div>
+                                    </button>
+                                )
+                            })}
+                          </div>
+                        </div>
+                     )}
 
-                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                     <div className="flex-shrink-0 flex flex-wrap items-center justify-center gap-2 pt-2">
                         <button
                           onClick={() => onUpscale(activeResultIndex)}
-                          disabled={upscalingIndex !== null}
-                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 text-base font-medium bg-blue-600/90 backdrop-blur-sm text-white rounded-lg hover:bg-blue-500 transition-colors duration-200 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed"
+                          disabled={upscalingIndex !== null || isGeneratingBackgrounds || isGeneratingColorVariations}
+                          className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium bg-blue-600/90 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
                         >
-                            {isCurrentlyUpscaling ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    Upscaling...
-                                </>
-                            ) : (
-                                <>
-                                    <UpscaleIcon className="w-5 h-5" />
-                                    Upscale
-                                </>
-                            )}
+                          {isCurrentlyUpscaling ? <><svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75" fill="currentColor"></path></svg>Upscaling...</> : <><UpscaleIcon className="w-4 h-4" />Upscale</>}
+                        </button>
+                        <button
+                          onClick={onGenerateBackgrounds}
+                          disabled={isGeneratingBackgrounds || isGeneratingColorVariations || upscalingIndex !== null}
+                          className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium bg-teal-600/90 text-white rounded-lg hover:bg-teal-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                        >
+                          {isGeneratingBackgrounds ? <><svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75" fill="currentColor"></path></svg>Generating...</> : <><LandscapeIcon className="w-4 h-4" />Backgrounds</>}
+                        </button>
+                        <button
+                          onClick={onGenerateColorVariations}
+                          disabled={isGeneratingBackgrounds || isGeneratingColorVariations || upscalingIndex !== null}
+                          className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium bg-pink-600/90 text-white rounded-lg hover:bg-pink-500 transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                        >
+                          {isGeneratingColorVariations ? <><svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle><path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75" fill="currentColor"></path></svg>Generating...</> : <><SwatchIcon className="w-4 h-4" />Colors</>}
                         </button>
                         <button
                           onClick={handleDownload}
-                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 text-base font-medium bg-gray-700/80 backdrop-blur-sm text-white rounded-lg hover:bg-purple-600 transition-colors duration-200"
+                          className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium bg-gray-700 text-white rounded-lg hover:bg-purple-600 transition-colors"
                           >
-                          <DownloadIcon className="w-5 h-5" />
+                          <DownloadIcon className="w-4 h-4" />
                           Download
                         </button>
                         {showShopifyButton && (
                           <button
                             onClick={onPushToShopify}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 text-base font-medium bg-green-600/90 backdrop-blur-sm text-white rounded-lg hover:bg-green-500 transition-colors duration-200"
+                            className="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
                           >
-                              <ShopifyIcon className="w-5 h-5" />
-                              Create Product Listing
+                              <ShopifyIcon className="w-4 h-4" />
+                              Create Product
                           </button>
                         )}
                      </div>

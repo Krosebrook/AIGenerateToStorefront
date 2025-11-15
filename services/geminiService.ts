@@ -296,7 +296,7 @@ export async function editImageWithPrompt(
     if (brandKit && (brandKit.logo || brandKit.colors.length > 0)) {
         let brandInstructions = [];
         if (brandKit.logo) {
-            brandInstructions.push("The second image provided is a brand logo. Please incorporate it naturally onto the product shown in the first image.");
+            brandInstructions.push("The second image is a brand logo. Place this logo subtly on the generated product where a brand tag or logo would normally appear (e.g., on a sleeve, a hem tag, or on the back below the collar). The primary design is the first image; the brand logo should be a small, secondary element.");
         }
         if (brandKit.colors.length > 0) {
             brandInstructions.push(`The design should prioritize or be complemented by the following brand colors: ${brandKit.colors.join(', ')}.`);
@@ -472,5 +472,43 @@ export async function generateProductDetails(base64ImageData: string, mimeType: 
   } catch (error) {
     console.error("Error calling Gemini API for product details:", error);
     throw new Error("Failed to generate product details with Gemini API.");
+  }
+}
+
+export async function generateBackgroundVariation(base64ImageData: string, mimeType: string, backgroundPrompt: string): Promise<string> {
+  const prompt = `Isolate the main subject from the provided image and place it on a new background described as: "${backgroundPrompt}". The integration should be seamless and photorealistic, with accurate lighting and shadows that match the new background.`;
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { parts: [{ inlineData: { data: base64ImageData, mimeType } }, { text: prompt }] },
+      config: { responseModalities: [Modality.IMAGE] },
+    });
+    const newBase64Data = response.candidates?.[0].content.parts[0].inlineData?.data;
+    if (newBase64Data) {
+      return `data:image/png;base64,${newBase64Data}`;
+    }
+    throw new Error("No background variation data returned from API.");
+  } catch (error) {
+    console.error("Error calling Gemini API for background variation:", error);
+    throw new Error("Failed to generate background variation with Gemini API.");
+  }
+}
+
+export async function generateColorVariation(base64ImageData: string, mimeType: string, paletteDescription: string): Promise<string> {
+  const prompt = `Recolor the provided image using the following color palette theme: ${paletteDescription}. Preserve the original composition, shapes, and details, but shift the colors to match the new theme. Do not add or remove elements.`;
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: { parts: [{ inlineData: { data: base64ImageData, mimeType } }, { text: prompt }] },
+      config: { responseModalities: [Modality.IMAGE] },
+    });
+    const newBase64Data = response.candidates?.[0].content.parts[0].inlineData?.data;
+    if (newBase64Data) {
+      return `data:image/png;base64,${newBase64Data}`;
+    }
+    throw new Error("No color variation data returned from API.");
+  } catch (error) {
+    console.error("Error calling Gemini API for color variation:", error);
+    throw new Error("Failed to generate color variation with Gemini API.");
   }
 }

@@ -5,7 +5,7 @@ import { ControlPanel, MerchPreset } from './components/ControlPanel';
 import { ResultDisplay } from './components/ResultDisplay';
 import { ShopifyModal } from './components/ShopifyModal';
 import { ModeSelector, AppMode } from './components/ModeSelector';
-import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, orchestrateProductGeneration, fetchLatestNews, GroundingSource, upscaleImage, applyStyleTransfer, generateMarketingImage } from './services/geminiService';
+import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, orchestrateProductGeneration, fetchLatestNews, GroundingSource, upscaleImage, applyStyleTransfer, generateMarketingImage, generateBackgroundVariation, generateColorVariation } from './services/geminiService';
 import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
 import { BrandKit } from './components/BrandKitPanel';
 import { NewsPanel } from './components/NewsPanel';
@@ -106,6 +106,14 @@ export default function App(): React.ReactElement {
   const [marketingPackage, setMarketingPackage] = useState<ShopifyProductDetails | null>(null);
   const [marketingImages, setMarketingImages] = useState<Record<string, string>>({});
   const [isGeneratingMarketingImages, setIsGeneratingMarketingImages] = useState(false);
+  
+  // State for image variations
+  const [backgroundVariations, setBackgroundVariations] = useState<GeneratedImage[]>([]);
+  const [colorVariations, setColorVariations] = useState<GeneratedImage[]>([]);
+  const [isGeneratingBackgrounds, setIsGeneratingBackgrounds] = useState<boolean>(false);
+  const [isGeneratingColorVariations, setIsGeneratingColorVariations] = useState<boolean>(false);
+  const [activeVariationUrl, setActiveVariationUrl] = useState<string | null>(null);
+
 
   useEffect(() => {
     try {
@@ -130,8 +138,11 @@ export default function App(): React.ReactElement {
   }, []);
 
   useEffect(() => {
-    // Clear generated visuals when the main result image changes
+    // Clear generated visuals and variations when the main result image changes
     setMarketingImages({});
+    setBackgroundVariations([]);
+    setColorVariations([]);
+    setActiveVariationUrl(null);
   }, [activeResultIndex]);
 
 
@@ -300,6 +311,9 @@ export default function App(): React.ReactElement {
     setNewsError(null);
     setMarketingPackage(null);
     setMarketingImages({});
+    setBackgroundVariations([]);
+    setColorVariations([]);
+    setActiveVariationUrl(null);
   }, []);
 
   const handleSuggest = useCallback(async () => {
@@ -375,25 +389,31 @@ export default function App(): React.ReactElement {
   }, [sourceImage, sourceImageUrl]);
   
   const handleUpscaleResultImage = useCallback(async (indexToUpscale: number) => {
-    const imageToUpscale = generatedImages[indexToUpscale];
-    if (!imageToUpscale) {
+    const displayedImage = activeVariationUrl || generatedImages[indexToUpscale]?.url;
+    if (!displayedImage) {
       setError('Cannot find the image to upscale.');
       return;
     }
     setUpscalingResultIndex(indexToUpscale);
     setError(null);
     try {
-      const base64Data = imageToUpscale.url.split(',')[1];
-      // Assuming generated/edited images are PNGs for simplicity
+      const base64Data = displayedImage.split(',')[1];
       const upscaledImageUrl = await upscaleImage(base64Data, 'image/png');
       
-      const newGeneratedImages = [...generatedImages];
-      newGeneratedImages[indexToUpscale] = {
-        ...newGeneratedImages[indexToUpscale],
-        url: upscaledImageUrl,
-        name: `${newGeneratedImages[indexToUpscale].name} (Upscaled)`
-      };
-      setGeneratedImages(newGeneratedImages);
+      // If a variation was upscaled, update that variation's URL
+      if (activeVariationUrl) {
+          setBackgroundVariations(vars => vars.map(v => v.url === activeVariationUrl ? { ...v, url: upscaledImageUrl } : v));
+          setColorVariations(vars => vars.map(v => v.url === activeVariationUrl ? { ...v, url: upscaledImageUrl } : v));
+          setActiveVariationUrl(upscaledImageUrl);
+      } else { // Otherwise update the main generated image
+          const newGeneratedImages = [...generatedImages];
+          newGeneratedImages[indexToUpscale] = {
+            ...newGeneratedImages[indexToUpscale],
+            url: upscaledImageUrl,
+            name: `${newGeneratedImages[indexToUpscale].name} (Upscaled)`
+          };
+          setGeneratedImages(newGeneratedImages);
+      }
 
     } catch (err: any) {
       console.error(err);
@@ -401,7 +421,7 @@ export default function App(): React.ReactElement {
     } finally {
       setUpscalingResultIndex(null);
     }
-  }, [generatedImages]);
+  }, [generatedImages, activeVariationUrl]);
 
   const handleApplyStyle = useCallback(async (styleName: string) => {
     if (!sourceImage || !sourceImageUrl) {
@@ -461,6 +481,72 @@ export default function App(): React.ReactElement {
         setIsGeneratingMarketingImages(false);
     }
   }, [generatedImages, activeResultIndex]);
+  
+  const handleGenerateBackgrounds = useCallback(async () => {
+    const activeImage = generatedImages[activeResultIndex];
+    if (!activeImage) return;
+
+    setIsGeneratingBackgrounds(true);
+    setBackgroundVariations([]);
+    setError(null);
+    try {
+      const base64Data = activeImage.url.split(',')[1];
+      const prompts = [
+        { name: 'Minimalist Background', prompt: 'a clean, minimalist light gray studio background' },
+        { name: 'Abstract Background', prompt: 'a subtle, abstract background with soft, blurred geometric shapes' },
+        { name: 'Textured Background', prompt: 'a textured background like dark wood or brushed metal' },
+      ];
+      
+      const results = await Promise.all(
+        prompts.map(p => generateBackgroundVariation(base64Data, 'image/png', p.prompt).then(url => ({ name: p.name, url })))
+      );
+      setBackgroundVariations(results);
+
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to generate background variations.");
+    } finally {
+      setIsGeneratingBackgrounds(false);
+    }
+  }, [generatedImages, activeResultIndex]);
+
+  const handleGenerateColorVariations = useCallback(async () => {
+    const activeImage = generatedImages[activeResultIndex];
+    if (!activeImage) return;
+
+    setIsGeneratingColorVariations(true);
+    setColorVariations([]);
+    setError(null);
+    try {
+        const base64Data = activeImage.url.split(',')[1];
+        const prompts = (useBrandKit && brandKit.colors.length > 0)
+            ? [
+                { name: 'Brand Palette', prompt: `a palette based on these colors: ${brandKit.colors.join(', ')}` },
+                { name: 'Brand Complementary', prompt: `a complementary palette to these colors: ${brandKit.colors.join(', ')}` },
+                { name: 'Brand Analogous', prompt: `an analogous palette using these colors as a base: ${brandKit.colors.join(', ')}` },
+              ]
+            : [
+                { name: 'Warm Tones', prompt: 'a warm, sunset-inspired palette with reds, oranges, and yellows' },
+                { name: 'Cool Tones', prompt: 'a cool, oceanic palette with blues, greens, and purples' },
+                { name: 'Monochrome', prompt: 'a modern, monochromatic grayscale palette' },
+              ];
+
+        const results = await Promise.all(
+            prompts.map(p => generateColorVariation(base64Data, 'image/png', p.prompt).then(url => ({ name: p.name, url })))
+        );
+        setColorVariations(results);
+
+    } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Failed to generate color variations.");
+    } finally {
+        setIsGeneratingColorVariations(false);
+    }
+  }, [generatedImages, activeResultIndex, brandKit.colors, useBrandKit]);
+
+  const handleSelectVariation = (url: string | null) => {
+    setActiveVariationUrl(url);
+  };
 
 
   const activeProduct = generatedImages[activeResultIndex];
@@ -542,6 +628,14 @@ export default function App(): React.ReactElement {
                   loadingProgress={loadingProgress}
                   onUpscale={handleUpscaleResultImage}
                   upscalingIndex={upscalingResultIndex}
+                  onGenerateBackgrounds={handleGenerateBackgrounds}
+                  isGeneratingBackgrounds={isGeneratingBackgrounds}
+                  backgroundVariations={backgroundVariations}
+                  onGenerateColorVariations={handleGenerateColorVariations}
+                  isGeneratingColorVariations={isGeneratingColorVariations}
+                  colorVariations={colorVariations}
+                  onSelectVariation={handleSelectVariation}
+                  displayedImageUrl={activeVariationUrl}
                 />
                 {marketingPackage && !isLoading && 
                   <MarketingDisplayPanel 
@@ -569,7 +663,7 @@ export default function App(): React.ReactElement {
          <ShopifyModal
             isOpen={isShopifyModalOpen}
             onClose={() => setIsShopifyModalOpen(false)}
-            imageUrl={activeProduct.url}
+            imageUrl={activeVariationUrl || activeProduct.url}
             productName={activeProduct.name}
             onGetProductDetails={handleGetProductDetails}
             initialDetails={marketingPackage}
