@@ -245,7 +245,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                  <div className="w-full h-full flex flex-col gap-4">
                      <div 
                         ref={imageContainerRef}
-                        className="relative flex-grow w-full flex items-center justify-center overflow-hidden cursor-grab rounded-lg"
+                        className="relative flex-grow w-full flex items-center justify-center overflow-hidden cursor-grab rounded-lg bg-gray-900/20 shadow-[inset_0_5px_25px_rgba(0,0,0,0.5)]"
                         onMouseDown={onMouseDown}
                         onMouseMove={onMouseMove}
                         onMouseUp={onMouseUp}
@@ -267,6 +267,15 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({
                                 touchAction: 'none'
                             }}
                          />
+                         
+                         {/* Highlight Effect */}
+                         <div
+                            className="absolute inset-0 rounded-lg pointer-events-none"
+                            style={{
+                                background: 'radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.07), transparent 40%)'
+                            }}
+                            aria-hidden="true"
+                          />
                          
                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-gray-900/70 backdrop-blur-sm p-2 rounded-full shadow-lg">
                             <button onClick={() => setScale(s => Math.max(0.5, s - 0.2))} className="p-2 text-gray-300 hover:text-white hover:bg-purple-600 rounded-full transition-colors" aria-label="Zoom out">

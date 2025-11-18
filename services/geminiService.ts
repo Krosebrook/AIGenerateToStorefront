@@ -287,11 +287,16 @@ export async function editImageWithPrompt(
   mimeType: string, 
   prompt: string, 
   negativePrompt: string,
-  brandKit?: BrandKit
+  brandKit?: BrandKit,
+  aspectRatio?: string
 ): Promise<string> {
   try {
     
     let finalPrompt = prompt;
+
+    if (aspectRatio) {
+        finalPrompt += `\n\n**Output Format:** The final image must have a strict aspect ratio of ${aspectRatio}. Adjust the composition as needed to fit this format naturally.`;
+    }
 
     if (brandKit && (brandKit.logo || brandKit.colors.length > 0)) {
         let brandInstructions = [];

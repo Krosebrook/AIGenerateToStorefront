@@ -268,7 +268,14 @@ export default function App(): React.ReactElement {
             const results: GeneratedImage[] = [];
             for (let i = 0; i < variations; i++) {
                  setLoadingProgress({ current: i + 1, total: variations, message: `Generating variation ${i + 1}...` });
-                 const imageUrl = await editImageWithPrompt(base64Data, sourceImage.type, prompt, negativePrompt, useBrandKit ? brandKit : undefined);
+                 const imageUrl = await editImageWithPrompt(
+                    base64Data, 
+                    sourceImage.type, 
+                    prompt, 
+                    negativePrompt, 
+                    useBrandKit ? brandKit : undefined,
+                    aspectRatio
+                 );
                  results.push({ name: `Variation ${i + 1}`, url: imageUrl });
                  setGeneratedImages([...results]);
             }

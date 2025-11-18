@@ -83,7 +83,12 @@ export const MarketingDisplayPanel: React.FC<MarketingDisplayPanelProps> = ({ de
                             </button>
                         </>
                     ) : (
-                        !isGenerating && <PhotoIcon className="w-12 h-12 text-gray-600" />
+                        !isGenerating && (
+                            <div className="flex flex-col items-center justify-center text-center text-gray-600 p-2">
+                                <PhotoIcon className="w-12 h-12" />
+                                <p className="text-xs font-semibold mt-2">No Image Available</p>
+                            </div>
+                        )
                     )}
                 </div>
             </div>
