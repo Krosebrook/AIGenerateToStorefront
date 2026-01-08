@@ -11,7 +11,11 @@ export interface ShopifyProductPayload {
   vendor: string;
   product_type: string;
   status: 'draft' | 'active';
-  images?: Array<{ src: string }>;
+  images?: Array<{ 
+    src?: string;
+    attachment?: string;
+    filename?: string;
+  }>;
 }
 
 export interface ShopifyProduct {
@@ -75,14 +79,18 @@ export function dataURLToBlob(dataURL: string): Blob {
 
 /**
  * Sanitize HTML content for Shopify product descriptions
- * Removes potentially dangerous scripts while preserving basic formatting
+ * Shopify accepts HTML in body_html, but we escape user input to prevent XSS
+ * For a production app, consider using a library like DOMPurify
  */
 export function sanitizeHtmlForShopify(html: string): string {
-  // Basic HTML escaping for user-provided content
-  // Shopify accepts HTML in body_html, but we should be cautious
+  // For now, we'll escape all HTML to plain text since Shopify can handle plain text descriptions
+  // This is the safest approach - no HTML injection possible
   return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
     .trim();
 }
 
@@ -125,16 +133,14 @@ export async function createShopifyProduct(productData: {
   };
 
   // Add image if provided
-  // Shopify REST API accepts base64-encoded images in the attachment field
-  // or image URLs in the src field
+  // Shopify REST API accepts base64-encoded images via the attachment field
   if (productData.imageDataURL) {
-    // For base64 images, we need to use the attachment field format
     const base64Data = productData.imageDataURL.split(',')[1];
     if (base64Data) {
       payload.product.images = [{
         attachment: base64Data,
         filename: `${Date.now()}.png`,
-      } as any]; // Type assertion needed as attachment isn't in standard type
+      }];
     }
   }
 

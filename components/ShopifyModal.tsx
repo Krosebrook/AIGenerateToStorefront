@@ -105,9 +105,12 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
         }
       }, 3000);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error pushing to Shopify:', error);
-      setPushError(error.message || 'Failed to create product in Shopify. Please try again.');
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to create product in Shopify. Please try again.';
+      setPushError(errorMessage);
       setPushStep(0); // Reset to allow retry
     }
   };
