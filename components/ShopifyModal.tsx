@@ -3,6 +3,12 @@ import { XCircleIcon } from './icons/XCircleIcon';
 import { ShopifyProductDetails } from '../App';
 import { PlusCircleIcon } from './icons/PlusCircleIcon';
 import { ClipboardIcon } from './icons/ClipboardIcon';
+import { 
+  createShopifyProduct, 
+  getShopifyConfigStatus, 
+  getShopifyProductAdminUrl,
+  isShopifyConfigured 
+} from '../services/shopifyService';
 
 interface ShopifyModalProps {
   isOpen: boolean;
@@ -14,10 +20,10 @@ interface ShopifyModalProps {
 }
 
 const PUSH_MESSAGES = [
-    'Send to Production',
-    'Step 1/3: Validating assets...',
-    'Step 2/3: Connecting to POD service...',
-    'Step 3/3: Creating product draft...',
+    'Create Shopify Draft',
+    'Validating product data...',
+    'Uploading image to Shopify...',
+    'Creating product draft...',
     'Success! Product draft created.'
 ];
 
@@ -27,6 +33,9 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
   const [isLoading, setIsLoading] = useState(false);
   const [pushStep, setPushStep] = useState(0);
   const [complianceChecked, setComplianceChecked] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [shopifyProductUrl, setShopifyProductUrl] = useState<string | null>(null);
+  const [shopifyConfigStatus, setShopifyConfigStatus] = useState<{ configured: boolean; message: string }>({ configured: false, message: '' });
 
   const fetchDetails = useCallback(async () => {
     setIsLoading(true);
@@ -48,19 +57,59 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
     if (isOpen) {
       setPushStep(0);
       setComplianceChecked(false);
+      setPushError(null);
+      setShopifyProductUrl(null);
+      setShopifyConfigStatus(getShopifyConfigStatus());
       fetchDetails();
     }
   }, [isOpen, fetchDetails]);
 
-  const handlePush = () => {
+  const handlePush = async () => {
     if (pushStep > 0) return;
-    setPushStep(1);
-    setTimeout(() => setPushStep(2), 1200);
-    setTimeout(() => setPushStep(3), 2400);
-    setTimeout(() => setPushStep(4), 3600);
-    setTimeout(() => {
-      onClose();
-    }, 5000);
+    
+    setPushError(null);
+    setShopifyProductUrl(null);
+    
+    // Check if Shopify is configured
+    if (!isShopifyConfigured()) {
+      setPushError('Shopify is not configured. Please add your credentials to .env.local');
+      return;
+    }
+
+    try {
+      setPushStep(1); // Validating
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      setPushStep(2); // Uploading image
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      setPushStep(3); // Creating product
+      
+      // Create the product in Shopify
+      const shopifyProduct = await createShopifyProduct({
+        title: details.title,
+        description: details.description,
+        imageDataURL: imageUrl,
+        productType: productName,
+      });
+      
+      setPushStep(4); // Success
+      
+      const adminUrl = getShopifyProductAdminUrl(shopifyProduct.id);
+      setShopifyProductUrl(adminUrl);
+      
+      // Auto-close after showing success (or let user close manually to see the URL)
+      setTimeout(() => {
+        if (pushStep === 4) {
+          // User can close manually to copy URL
+        }
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error('Error pushing to Shopify:', error);
+      setPushError(error.message || 'Failed to create product in Shopify. Please try again.');
+      setPushStep(0); // Reset to allow retry
+    }
   };
   
   const handleAdCopyChange = (index: number, value: string) => {
@@ -207,6 +256,41 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
             </div>
 
 
+            {!shopifyConfigStatus.configured && (
+                <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-3 text-sm text-yellow-200">
+                    <strong>⚠️ Shopify Not Configured</strong>
+                    <p className="mt-1">{shopifyConfigStatus.message}</p>
+                </div>
+            )}
+            
+            {shopifyConfigStatus.configured && (
+                <div className="bg-green-900/30 border border-green-700 rounded-lg p-3 text-sm text-green-200">
+                    <strong>✓ Shopify Connected</strong>
+                    <p className="mt-1">{shopifyConfigStatus.message}</p>
+                </div>
+            )}
+
+            {pushError && (
+                <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-sm text-red-200">
+                    <strong>Error:</strong> {pushError}
+                </div>
+            )}
+            
+            {shopifyProductUrl && pushStep === 4 && (
+                <div className="bg-green-900/30 border border-green-700 rounded-lg p-3 text-sm text-green-200">
+                    <strong>✓ Success!</strong>
+                    <p className="mt-1">Product draft created in Shopify.</p>
+                    <a 
+                        href={shopifyProductUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-green-300 hover:text-green-100 underline font-medium"
+                    >
+                        View in Shopify Admin →
+                    </a>
+                </div>
+            )}
+
             <div className="border-t border-gray-700 pt-4 mt-auto">
                 <label className="flex items-center gap-3 text-sm text-gray-300 cursor-pointer">
                     <input
@@ -221,7 +305,7 @@ export const ShopifyModal: React.FC<ShopifyModalProps> = ({ isOpen, onClose, ima
             
             <button
                 onClick={handlePush}
-                disabled={!complianceChecked || pushStep > 0 || isLoading}
+                disabled={!complianceChecked || pushStep > 0 || isLoading || !shopifyConfigStatus.configured}
                 className={`w-full inline-flex items-center justify-center px-5 py-3 text-base font-medium text-center text-white rounded-lg transition-colors duration-200
                 ${pushStep === 4 ? 'bg-green-700' : 'bg-purple-600 hover:bg-purple-700'}
                 focus:ring-4 focus:ring-purple-400 disabled:bg-gray-600 disabled:cursor-not-allowed`}
