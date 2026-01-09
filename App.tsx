@@ -3,7 +3,7 @@ import { Header } from './components/Header';
 import { ImageUploader } from './components/ImageUploader';
 import { ControlPanel, MerchPreset } from './components/ControlPanel';
 import { ResultDisplay } from './components/ResultDisplay';
-import { ShopifyModal } from './components/ShopifyModal';
+import { PublishModal } from './components/PublishModal';
 import { ModeSelector, AppMode } from './components/ModeSelector';
 import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, orchestrateProductGeneration, fetchLatestNews, GroundingSource, upscaleImage, applyStyleTransfer, generateMarketingImage, generateBackgroundVariation, generateColorVariation } from './services/geminiService';
 import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
@@ -702,7 +702,7 @@ export default function App(): React.ReactElement {
         </footer>
       </div>
       {activeProduct && (
-         <ShopifyModal
+         <PublishModal
             isOpen={isShopifyModalOpen}
             onClose={() => setIsShopifyModalOpen(false)}
             imageUrl={activeProduct.url}
