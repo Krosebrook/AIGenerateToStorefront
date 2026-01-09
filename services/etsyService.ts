@@ -82,10 +82,12 @@ export interface EtsyImageUploadResponse {
 }
 
 // Popular Etsy taxonomy IDs (product categories)
+// Source: Etsy Seller Taxonomy API (https://www.etsy.com/developers/documentation/reference/taxonomy)
+// Note: Taxonomy IDs may change - verify against current Etsy taxonomy
 export const ETSY_TAXONOMIES = {
   CLOTHING_TSHIRT: 1964,
   ACCESSORIES_MUG: 1066,
-  ART_POSTER: 1066,
+  ART_PRINT: 2031, // Fixed: Poster/Art Print has different taxonomy than mug
   HOME_DECOR: 1063,
   ACCESSORIES_BAG: 1065,
   ACCESSORIES_PHONE_CASE: 2093,

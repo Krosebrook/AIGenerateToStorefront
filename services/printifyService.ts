@@ -98,6 +98,8 @@ export interface PrintifyPublishResponse {
 }
 
 // Common blueprint IDs for popular products
+// Source: Printify Catalog API (https://developers.printify.com/docs/)
+// Note: Blueprint IDs may change - verify against Printify Catalog API for production use
 export const PRINTIFY_BLUEPRINTS = {
   UNISEX_TSHIRT: 3, // Classic Unisex T-Shirt
   HOODIE: 5, // Unisex Hoodie
@@ -376,6 +378,8 @@ export async function createAndPublishProduct(
 /**
  * Get default variant IDs for a blueprint
  * This is a simplified version. In production, fetch from Printify catalog API
+ * Note: Variant IDs may change - these are examples and should be validated
+ * TODO: Implement dynamic variant fetching from Printify Catalog API
  */
 async function getDefaultVariantIds(blueprintId: number): Promise<number[]> {
   // Common variant IDs for popular blueprints (these are examples)
@@ -388,7 +392,16 @@ async function getDefaultVariantIds(blueprintId: number): Promise<number[]> {
     [PRINTIFY_BLUEPRINTS.TOTE_BAG]: [31112], // One size
   };
 
-  return defaultVariants[blueprintId] || [45740]; // Default to a common variant
+  const variants = defaultVariants[blueprintId];
+  
+  // Fallback to a common variant if blueprint not found
+  // In production, this should trigger a fetch from Catalog API
+  if (!variants) {
+    console.warn(`No default variants for blueprint ${blueprintId}, using fallback`);
+    return [45740]; // Common fallback variant
+  }
+  
+  return variants;
 }
 
 /**

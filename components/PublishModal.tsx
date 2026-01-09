@@ -237,11 +237,15 @@ export const PublishModal: React.FC<PublishModalProps> = ({
   if (!isOpen) return null;
   
   const formattedHashtags = details.hashtags.filter(t => t).map(tag => `#${tag}`).join(' ');
+  
+  // Check if publishing is possible
+  const hasSelectedPlatforms = selectedPlatforms.size > 0;
+  const allSelectedPlatformsConfigured = Array.from(selectedPlatforms).every(p => platformStatuses[p].configured);
   const canPublish = complianceChecked && 
-    selectedPlatforms.size > 0 && 
+    hasSelectedPlatforms && 
     !isPublishing && 
     !isLoading &&
-    Array.from(selectedPlatforms).every(p => platformStatuses[p].configured);
+    allSelectedPlatformsConfigured;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
