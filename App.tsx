@@ -14,6 +14,13 @@ const PublishModal = lazy(() => import('./components/PublishModal').then(module 
 const MarketingDisplayPanel = lazy(() => import('./components/MarketingDisplayPanel').then(module => ({ default: module.MarketingDisplayPanel })));
 const NewsPanel = lazy(() => import('./components/NewsPanel').then(module => ({ default: module.NewsPanel })));
 
+// Loading fallback components for Suspense boundaries
+const PanelLoadingFallback = ({ height = 'h-32' }: { height?: string }) => (
+  <div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700 animate-pulse">
+    <div className={`${height} bg-gray-700 rounded`}></div>
+  </div>
+);
+
 export interface ShopifyProductDetails {
   title: string;
   description: string;
@@ -682,7 +689,7 @@ export default function App(): React.ReactElement {
                   displayedImageUrl={activeVariationUrl}
                 />
                 {marketingPackage && !isLoading && 
-                  <Suspense fallback={<div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700 animate-pulse"><div className="h-32 bg-gray-700 rounded"></div></div>}>
+                  <Suspense fallback={<PanelLoadingFallback />}>
                     <MarketingDisplayPanel 
                       details={marketingPackage}
                       onGenerate={handleGenerateMarketingImages}
@@ -693,7 +700,7 @@ export default function App(): React.ReactElement {
                 }
               </div>
             </div>
-             <Suspense fallback={<div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700 mt-8"><div className="h-24 bg-gray-700 rounded animate-pulse"></div></div>}>
+             <Suspense fallback={<PanelLoadingFallback height="h-24" />}>
                <NewsPanel 
                   articles={newsArticles}
                   sources={newsSources}
