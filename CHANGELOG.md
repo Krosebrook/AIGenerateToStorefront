@@ -8,6 +8,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Printify Integration**: Full print-on-demand integration with Printify API
+  - Upload designs directly to Printify
+  - Create products with multiple variants (sizes, colors)
+  - Automatic publishing to connected sales channels
+  - Support for multiple product types (T-shirts, hoodies, mugs, posters, etc.)
+  - Configurable print providers and pricing
+  - See [PRINTIFY_INTEGRATION.md](./PRINTIFY_INTEGRATION.md) for setup
+- **Etsy Integration**: Direct marketplace integration with Etsy
+  - Create product listings programmatically
+  - Upload product images
+  - Support for product categories (taxonomy)
+  - Automatic tag management (up to 13 tags)
+  - Made-to-order product support
+  - See [ETSY_INTEGRATION.md](./ETSY_INTEGRATION.md) for setup
+- **Multi-Platform Publishing**: New unified publishing modal
+  - Select multiple platforms to publish simultaneously
+  - Real-time connection status for each platform
+  - Independent error handling per platform
+  - Success tracking with direct links to created products
+  - Platform-specific configuration validation
+- **Enhanced Environment Configuration**: Added support for Printify and Etsy credentials
+  - `PRINTIFY_API_TOKEN` - Printify API authentication
+  - `PRINTIFY_SHOP_ID` - Printify shop identifier
+  - `ETSY_API_KEY` - Etsy API key
+  - `ETSY_SHOP_ID` - Etsy shop identifier
+  - `ETSY_ACCESS_TOKEN` - Etsy OAuth access token
+- **Product Pricing**: Added price configuration field in publish modal
+- **Comprehensive Documentation**: 
+  - Printify integration guide with troubleshooting
+  - Etsy integration guide with compliance checklist
+  - Updated README with all platform configurations
+
+### Changed
+- Renamed `ShopifyModal` to `PublishModal` for multi-platform support
+- Updated UI to show multiple platform options
+- Enhanced platform status indicators with real-time feedback
+- Improved error messaging for platform-specific issues
+
+### Technical
+- Created `printifyService.ts` with complete Printify API integration
+- Created `etsyService.ts` with Etsy Open API v3 support
+- Updated `vite.config.ts` to include new environment variables
+- Maintained backward compatibility with existing Shopify integration
+
+### Security
+- All new API integrations use HTTPS-only connections
+- Environment variables for all sensitive credentials
+- HTML sanitization for product descriptions across all platforms
+- Input validation for titles, descriptions, and pricing
+- Platform-specific error handling prevents information leakage
+
+## [0.1.0] - Previous Release
+
+### Added
 - **Shopify Store Integration**: Real Shopify Admin API integration to push AI-generated products to your store
   - Products created as drafts for manual review before publishing
   - Configuration via environment variables (SHOPIFY_SHOP_DOMAIN, SHOPIFY_ADMIN_API_TOKEN)

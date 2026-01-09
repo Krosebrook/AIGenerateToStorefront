@@ -48,10 +48,61 @@ SHOPIFY_ADMIN_API_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxx
 SHOPIFY_API_VERSION=2024-01
 ```
 
-**Security Notes:**
+See [SHOPIFY_INTEGRATION.md](./SHOPIFY_INTEGRATION.md) for detailed setup instructions.
+
+## Printify Configuration
+
+To enable print-on-demand fulfillment with Printify:
+
+### 1. Create a Printify Account
+
+1. Sign up at [Printify.com](https://printify.com)
+2. Create or connect your shop
+
+### 2. Get Your API Token
+
+1. Go to **Account** → **API** in Printify dashboard
+2. Click **Generate Token**
+3. Copy the token and your Shop ID
+
+### 3. Add Credentials to .env.local
+
+```
+PRINTIFY_API_TOKEN=your_printify_api_token_here
+PRINTIFY_SHOP_ID=your_shop_id_here
+```
+
+See [PRINTIFY_INTEGRATION.md](./PRINTIFY_INTEGRATION.md) for detailed setup instructions.
+
+## Etsy Configuration
+
+To enable Etsy marketplace integration:
+
+### 1. Create an Etsy Seller Account
+
+1. Sign up at [Etsy.com](https://www.etsy.com/sell)
+2. Complete your shop setup
+
+### 2. Register Your App
+
+1. Go to [Etsy Developer Portal](https://www.etsy.com/developers/your-apps)
+2. Create a new app and get your API key
+3. Complete OAuth 2.0 flow to get access token
+
+### 3. Add Credentials to .env.local
+
+```
+ETSY_API_KEY=your_etsy_api_key_here
+ETSY_SHOP_ID=your_etsy_shop_id_here
+ETSY_ACCESS_TOKEN=your_etsy_access_token_here
+```
+
+See [ETSY_INTEGRATION.md](./ETSY_INTEGRATION.md) for detailed setup instructions.
+
+**Security Notes for All Platforms:**
 - Never commit `.env.local` to version control
 - Keep your API tokens secure
-- Tokens grant access to your store - treat them like passwords
+- Tokens grant access to your stores - treat them like passwords
 - Regenerate tokens if they are ever exposed
 
 ### 4. Test the Integration
@@ -59,8 +110,12 @@ SHOPIFY_API_VERSION=2024-01
 1. Run the app with `npm run dev`
 2. Generate a product mockup
 3. Click "Push to Shopify" button
-4. Verify the modal shows "✓ Shopify Connected"
-5. Create a product draft - it will appear in your Shopify admin under Products (as a draft)
+4. Select which platforms to publish to (Shopify, Printify, Etsy)
+5. Verify connection status for each platform shows "✓ Connected"
+6. Set product details and price
+7. Check compliance checkbox
+8. Click "Publish" to create products on selected platforms
+9. Verify products appear in respective admin panels
 
 ## Features
 
@@ -68,8 +123,12 @@ SHOPIFY_API_VERSION=2024-01
 - **Image Editing**: Apply custom edits, styles, and variations to uploaded images
 - **Product Mockups**: Preview designs on various merchandise items
 - **Marketing Copy**: Auto-generate product titles, descriptions, and social media content
-- **Shopify Integration**: Push products directly to your Shopify store as drafts
+- **Multi-Platform Publishing**: Push products directly to multiple sales channels
+  - **Shopify Integration**: Publish as product drafts to your Shopify store
+  - **Printify Integration**: Create print-on-demand products with automatic fulfillment
+  - **Etsy Integration**: List products directly on Etsy marketplace
 - **Brand Kit**: Maintain brand consistency with custom colors and logos
+- **Batch Publishing**: Publish to multiple platforms simultaneously
 
 ## Build for Production
 
