@@ -1,16 +1,18 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Header } from './components/Header';
 import { ImageUploader } from './components/ImageUploader';
 import { ControlPanel, MerchPreset } from './components/ControlPanel';
 import { ResultDisplay } from './components/ResultDisplay';
-import { PublishModal } from './components/PublishModal';
 import { ModeSelector, AppMode } from './components/ModeSelector';
 import { editImageWithPrompt, suggestProductsForImage, generateProductDetails, orchestrateProductGeneration, fetchLatestNews, GroundingSource, upscaleImage, applyStyleTransfer, generateMarketingImage, generateBackgroundVariation, generateColorVariation } from './services/geminiService';
 import { fileToBase64, dataURLtoFile } from './utils/fileUtils';
 import { BrandKit } from './components/BrandKitPanel';
-import { NewsPanel } from './components/NewsPanel';
-import { MarketingDisplayPanel } from './components/MarketingDisplayPanel';
 import { Toast } from './components/Toast';
+
+// Lazy load components that are conditionally rendered or not immediately needed
+const PublishModal = lazy(() => import('./components/PublishModal').then(module => ({ default: module.PublishModal })));
+const MarketingDisplayPanel = lazy(() => import('./components/MarketingDisplayPanel').then(module => ({ default: module.MarketingDisplayPanel })));
+const NewsPanel = lazy(() => import('./components/NewsPanel').then(module => ({ default: module.NewsPanel })));
 
 export interface ShopifyProductDetails {
   title: string;
@@ -680,21 +682,25 @@ export default function App(): React.ReactElement {
                   displayedImageUrl={activeVariationUrl}
                 />
                 {marketingPackage && !isLoading && 
-                  <MarketingDisplayPanel 
-                    details={marketingPackage}
-                    onGenerate={handleGenerateMarketingImages}
-                    isGenerating={isGeneratingMarketingImages}
-                    images={marketingImages}
-                  />
+                  <Suspense fallback={<div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700 animate-pulse"><div className="h-32 bg-gray-700 rounded"></div></div>}>
+                    <MarketingDisplayPanel 
+                      details={marketingPackage}
+                      onGenerate={handleGenerateMarketingImages}
+                      isGenerating={isGeneratingMarketingImages}
+                      images={marketingImages}
+                    />
+                  </Suspense>
                 }
               </div>
             </div>
-             <NewsPanel 
-                articles={newsArticles}
-                sources={newsSources}
-                isLoading={isFetchingNews}
-                error={newsError}
-              />
+             <Suspense fallback={<div className="bg-gray-800/50 p-6 rounded-lg shadow-lg border border-gray-700 mt-8"><div className="h-24 bg-gray-700 rounded animate-pulse"></div></div>}>
+               <NewsPanel 
+                  articles={newsArticles}
+                  sources={newsSources}
+                  isLoading={isFetchingNews}
+                  error={newsError}
+                />
+             </Suspense>
           </div>
         </main>
         <footer className="text-center p-4 text-gray-500 text-sm">
@@ -702,14 +708,16 @@ export default function App(): React.ReactElement {
         </footer>
       </div>
       {activeProduct && (
-         <PublishModal
-            isOpen={isShopifyModalOpen}
-            onClose={() => setIsShopifyModalOpen(false)}
-            imageUrl={activeProduct.url}
-            productName={activeProduct.name}
-            onGetProductDetails={handleGetProductDetails}
-            initialDetails={marketingPackage}
-        />
+         <Suspense fallback={null}>
+           <PublishModal
+              isOpen={isShopifyModalOpen}
+              onClose={() => setIsShopifyModalOpen(false)}
+              imageUrl={activeProduct.url}
+              productName={activeProduct.name}
+              onGetProductDetails={handleGetProductDetails}
+              initialDetails={marketingPackage}
+          />
+         </Suspense>
       )}
     </>
   );
